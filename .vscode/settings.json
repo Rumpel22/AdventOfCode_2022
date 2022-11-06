@@ -1,0 +1,10 @@
+{
+    "files.exclude": {
+        "target/": true
+    },
+    "editor.formatOnSave": true,
+    "rust-analyzer.typing.autoClosingAngleBrackets.enable": true,
+    "workbench.colorCustomizations": {
+        "editorInlayHint.foreground": "#aaa"
+    }
+}
