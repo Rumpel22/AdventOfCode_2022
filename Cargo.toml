@@ -10,3 +10,4 @@ name = "day_01"
 path = "src/bin/day_01/main.rs"
 
 [dependencies]
+regex = "1.7.0"
