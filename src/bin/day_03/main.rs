@@ -17,16 +17,11 @@ fn main() {
         .map(|line| line.unwrap().chars().map(|c| c == '#').collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
-    let tree_count_1 = tree_counter(&lines, 1, 1);
-    let tree_count_3 = tree_counter(&lines, 3, 1);
-    let tree_count_5 = tree_counter(&lines, 5, 1);
-    let tree_count_7 = tree_counter(&lines, 7, 1);
-    let tree_count_1_2 = tree_counter(&lines, 1, 2);
-    println!("{tree_count_3}");
-    println!(
-        "{tree_count_1} x {tree_count_3} x {tree_count_5} x {tree_count_7} x {tree_count_1_2} = {}",
-        tree_count_1 * tree_count_3 * tree_count_5 * tree_count_7 * tree_count_1_2
-    );
+    let commands = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
+    let single_solutions =
+        commands.map(|(horizontal, vertical)| tree_counter(&lines, horizontal, vertical));
+    let total_solution: usize = single_solutions.iter().product();
+    println!("{:?} = {}", single_solutions, total_solution);
 }
 
 fn tree_counter(lines: &[Vec<bool>], horizontal: usize, vertical: usize) -> usize {
