@@ -29,16 +29,15 @@ fn main() {
     );
 }
 
-fn tree_counter(lines: &[Vec<bool>], horizontal: usize, vertical: usize) -> i64 {
-    let mut tree_count = 0;
-    let mut v_position = 0;
+fn tree_counter(lines: &[Vec<bool>], horizontal: usize, vertical: usize) -> usize {
     let mut h_position = 0;
-    while h_position < lines.len() {
-        if lines[h_position][v_position] {
-            tree_count += 1;
-        }
-        v_position = (v_position + horizontal) % lines[h_position].len();
-        h_position += vertical;
-    }
-    tree_count
+    lines
+        .iter()
+        .step_by(vertical)
+        .filter_map(|line| {
+            let is_tree = if line[h_position] { Some(true) } else { None };
+            h_position = (h_position + horizontal) % line.len();
+            is_tree
+        })
+        .count()
 }
