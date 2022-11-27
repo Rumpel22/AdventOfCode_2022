@@ -7,26 +7,26 @@ use std::{
 use regex::Regex;
 
 #[derive(Default)]
-struct Passport {
+struct Passport<'a> {
     byr: Option<u16>,
     iyr: Option<u16>,
     eyr: Option<u16>,
-    hgt: Option<String>,
-    hcl: Option<String>,
-    ecl: Option<String>,
-    pid: Option<String>,
+    hgt: Option<&'a str>,
+    hcl: Option<&'a str>,
+    ecl: Option<&'a str>,
+    pid: Option<&'a str>,
     _cid: Option<u32>,
 }
 
-impl Passport {
+impl Passport<'_> {
     fn has_required_fields(&self) -> bool {
         self.byr
             .and(self.iyr)
             .and(self.eyr)
-            .and(self.hgt.as_ref())
-            .and(self.hcl.as_ref())
-            .and(self.ecl.as_ref())
-            .and(self.pid.as_ref())
+            .and(self.hgt)
+            .and(self.hcl)
+            .and(self.ecl)
+            .and(self.pid)
             .is_some()
     }
 
@@ -36,24 +36,21 @@ impl Passport {
             && (self.byr.unwrap() >= 1920 && self.byr.unwrap() <= 2002)
             && (self.eyr.unwrap() >= 2020 && self.eyr.unwrap() <= 2030)
             && {
-                let valid = ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"]
-                    .contains(&self.ecl.as_ref().unwrap().to_lowercase().as_str());
-                valid
+                ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"]
+                    .contains(&self.ecl.unwrap().to_lowercase().as_str())
             }
             && {
                 let re = Regex::new("^#[[:xdigit:]]{6}$").unwrap();
-                let valid = re.is_match(self.hcl.as_ref().unwrap().to_lowercase().as_str());
-                valid
+                re.is_match(self.hcl.unwrap().to_lowercase().as_str())
             }
             && {
                 let re = Regex::new(r"^\d{9}$").unwrap();
-                let valid = re.is_match(self.pid.as_ref().unwrap().as_str());
-                valid
+                re.is_match(self.pid.unwrap())
             }
             && {
-                let string = self.hgt.as_ref().unwrap().as_str();
+                let string = self.hgt.unwrap();
                 let number = &string[..string.len() - 2].parse::<u8>();
-                let valid = if number.is_err() {
+                if number.is_err() {
                     false
                 } else if string.ends_with("in") {
                     let number = number.as_ref().unwrap();
@@ -63,8 +60,7 @@ impl Passport {
                     (150..=193).contains(number)
                 } else {
                     false
-                };
-                valid
+                }
             }
     }
 }
@@ -72,9 +68,10 @@ impl Passport {
 fn parse(line: &str) -> Result<Passport, std::fmt::Error> {
     let mut passport = Passport::default();
     let re = Regex::new(r"(\w{3}:\S+\b)").unwrap();
+    let iter = re.captures_iter(line);
 
-    for capture in re.captures_iter(line) {
-        let c = &capture[0];
+    for capture in iter {
+        let c = capture.get(0).unwrap().as_str();
         match &c[0..3] {
             "byr" => {
                 passport = Passport {
@@ -96,25 +93,25 @@ fn parse(line: &str) -> Result<Passport, std::fmt::Error> {
             }
             "hgt" => {
                 passport = Passport {
-                    hgt: Some(c[4..].to_string()),
+                    hgt: Some(&c[4..]),
                     ..passport
                 }
             }
             "hcl" => {
                 passport = Passport {
-                    hcl: Some(c[4..].to_string()),
+                    hcl: Some(&c[4..]),
                     ..passport
                 }
             }
             "ecl" => {
                 passport = Passport {
-                    ecl: Some(c[4..].to_string()),
+                    ecl: Some(&c[4..]),
                     ..passport
                 }
             }
             "pid" => {
                 passport = Passport {
-                    pid: Some(c[4..].to_string()),
+                    pid: Some(&c[4..]),
                     ..passport
                 }
             }
