@@ -5,36 +5,23 @@ use std::{
 };
 
 fn row(data: &str) -> u16 {
-    let mut value = 0;
-    for c in data.chars() {
-        match c {
-            'F' => value <<= 1,
-            'B' => value = (value << 1) + 1,
-            _ => panic!("Invalid input data for row"),
-        }
-    }
-
-    value
+    data.chars()
+        .fold(0, |value, c| (value << 1) + (if c == 'B' { 1 } else { 0 }))
 }
 
 fn column(data: &str) -> u16 {
-    let mut value = 0;
-    for c in data.chars() {
-        match c {
-            'L' => value <<= 1,
-            'R' => value = (value << 1) + 1,
-            _ => panic!("Invalid input data for row"),
-        }
-    }
-
-    value
+    data.chars().fold(0, |value, c| match c {
+        'L' => value << 1,
+        'R' => (value << 1) + 1,
+        _ => panic!("Invalid input data for column"),
+    })
 }
 fn seat_id(seat_ids: &[u16]) -> Option<u16> {
     seat_ids
         .iter()
         .zip(seat_ids.iter().skip(1))
-        .find(|(&left, &right)| left + 1 != right)
-        .map(|(&_, &seat_id)| seat_id - 1)
+        .find(|(&prev, &next)| prev + 1 != next)
+        .map(|(&prev, _)| prev + 1)
 }
 
 fn main() {
