@@ -1,31 +1,26 @@
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+use std::{fs, path::Path};
 
 fn main() {
     let path = Path::new("src/bin/day_01/input.txt");
-    let file = match File::open(&path) {
-        Ok(file) => file,
-        Err(why) => panic!("couldn't open {}: {}", path.display(), why),
-    };
+    match fs::read_to_string(path) {
+        Ok(input) => {
+            let mut elves = input
+                .split("\n\n")
+                .map(|grp| {
+                    grp.split('\n')
+                        .map(|line| line.parse::<i32>().unwrap())
+                        .sum::<i32>()
+                })
+                .collect::<Vec<_>>();
+            elves.sort();
+            elves.reverse();
+            let max_value = elves.first().unwrap();
 
-    let reader = BufReader::new(file);
-    let numbers = reader
-        .lines()
-        .map(|number| number.unwrap())
-        .map(|number| number.parse::<i32>().unwrap())
-        .collect::<Vec<_>>();
-
-    for a in numbers.iter() {
-        for b in numbers.iter() {
-            for c in numbers.iter() {
-                if a + b + c == 2020 {
-                    println!("{}", a * b * c);
-                    return;
-                }
-            }
+            let top_3_elves = elves.iter().take(3).sum::<i32>();
+            println!("Solution 1: {max_value}, solution 2: {top_3_elves}");
+        }
+        Err(err) => {
+            println!("{err}")
         }
     }
 }
