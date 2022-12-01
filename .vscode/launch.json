@@ -9,7 +9,7 @@
                 "args": [
                     "build",
                     "--bin=day_01",
-                    "--package=advent_of_code_2021"
+                    "--package=advent_of_code_2022"
                 ],
                 "filter": {
                     "name": "day_01",
@@ -28,7 +28,7 @@
                     "test",
                     "--no-run",
                     "--bin=day_01",
-                    "--package=advent_of_code_2021"
+                    "--package=advent_of_code_2022"
                 ],
                 "filter": {
                     "name": "day_01",
