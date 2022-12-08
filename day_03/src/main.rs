@@ -1,5 +1,3 @@
-use std::{fs, path::Path};
-
 use regex::Regex;
 
 fn priority(c: char) -> u32 {
@@ -11,8 +9,7 @@ fn priority(c: char) -> u32 {
 }
 
 fn main() {
-    let path = Path::new("src/bin/day_03/input.txt");
-    let input = fs::read_to_string(path).unwrap();
+    let input = include_str!("../data/input.txt");
 
     let solution1 = input
         .lines()
@@ -27,7 +24,7 @@ fn main() {
 
     let re = Regex::new(r"\w+\n\w+\n\w+\n?").unwrap();
     let solution2 = re
-        .find_iter(&input)
+        .find_iter(input)
         .map(|group| {
             let mut lines = group.as_str().lines();
             let l1 = lines.next().unwrap();
