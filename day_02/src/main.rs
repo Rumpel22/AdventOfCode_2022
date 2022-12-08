@@ -1,5 +1,3 @@
-use std::{fs, path::Path};
-
 #[derive(Clone)]
 enum Opponent {
     Rock,
@@ -64,8 +62,7 @@ fn shape_points(my: &MyShape) -> i32 {
 }
 
 fn main() {
-    let path = Path::new("src/bin/day_02/input.txt");
-    let input = fs::read_to_string(path).unwrap();
+    let input = include_str!("../data/input.txt");
     let points: i32 = input
         .lines()
         .map(|line| {
