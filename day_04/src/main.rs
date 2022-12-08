@@ -1,5 +1,4 @@
 use std::ops::RangeInclusive;
-use std::{fs, path::Path};
 
 use regex::Regex;
 
@@ -20,8 +19,7 @@ fn parse(line: &str) -> (RangeInclusive<u32>, RangeInclusive<u32>) {
 }
 
 fn main() {
-    let path = Path::new("src/bin/day_04/input.txt");
-    let input = fs::read_to_string(path).unwrap();
+    let input = include_str!("../data/input.txt");
 
     let mut partial_contained = 0;
 
