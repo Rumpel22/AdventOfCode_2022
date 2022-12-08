@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 fn main() {
-    let input = include_str!("input.txt");
+    let input = include_str!("../data/input.txt");
 
     let (solution1, solution2) = input
         .split("\n\n")
