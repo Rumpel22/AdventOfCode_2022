@@ -1,5 +1,3 @@
-use std::{fs, path::Path};
-
 use regex::Regex;
 
 #[derive(Debug)]
@@ -63,10 +61,9 @@ fn parse(input: &str) -> (Stacks, Commands) {
 }
 
 fn main() {
-    let path = Path::new("src/bin/day_05/input.txt");
-    let input = fs::read_to_string(path).unwrap();
+    let input = include_str!("../data/input.txt");
 
-    let (mut stacks, commands) = parse(&input);
+    let (mut stacks, commands) = parse(input);
     // for command in commands {
     //     for i in 0..command.count {
     //         let c = stacks[command.from - 1].pop().unwrap();
