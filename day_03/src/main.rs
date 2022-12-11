@@ -1,10 +1,23 @@
-use regex::Regex;
+use item::Item;
+use itertools::Itertools;
 
-fn priority(c: char) -> u32 {
-    match c {
-        'a'..='z' => c.to_digit(36).unwrap() - 10 + 1,
-        'A'..='Z' => c.to_digit(36).unwrap() - 10 + 1 + 26,
-        _ => panic!("Invalid character found."),
+mod item {
+    pub(crate) struct Item(char);
+
+    impl Item {
+        pub(crate) fn priority(self) -> u32 {
+            match self.0 {
+                'a'..='z' => self.0.to_digit(36).unwrap() - 10 + 1,
+                'A'..='Z' => self.0.to_digit(36).unwrap() - 10 + 1 + 26,
+                _ => unreachable!("Should never happen"),
+            }
+        }
+    }
+
+    impl From<char> for Item {
+        fn from(c: char) -> Self {
+            Self(c)
+        }
     }
 }
 
@@ -17,25 +30,24 @@ fn main() {
             let s1 = &line[..line.len() / 2];
             let s2 = &line[line.len() / 2..];
 
-            let c = s1.chars().find(|c| s2.contains(*c)).unwrap();
-            priority(c)
+            let item = Item::from(s1.chars().find(|c| s2.contains(*c)).unwrap());
+            item.priority()
         })
         .sum::<u32>();
 
-    let re = Regex::new(r"\w+\n\w+\n\w+\n?").unwrap();
-    let solution2 = re
-        .find_iter(input)
-        .map(|group| {
-            let mut lines = group.as_str().lines();
-            let l1 = lines.next().unwrap();
-            let l2 = lines.next().unwrap();
-            let l3 = lines.next().unwrap();
+    let solution2 = input
+        .lines()
+        .chunks(3)
+        .into_iter()
+        .map(|mut group| {
+            let l1 = group.next().unwrap();
+            let l2 = group.next().unwrap();
+            let l3 = group.next().unwrap();
             let c = l1
                 .chars()
-                .filter(|c| l2.contains(*c))
-                .find(|c| l3.contains(*c))
+                .find(|c| l2.contains(*c) && l3.contains(*c))
                 .unwrap();
-            priority(c)
+            Item::from(c).priority()
         })
         .sum::<u32>();
 
