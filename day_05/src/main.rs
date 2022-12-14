@@ -12,7 +12,7 @@ type Stack = Vec<char>;
 type Stacks = Vec<Stack>;
 
 fn parse_stacks(input: &str) -> Stacks {
-    let line_length = input.find('\n').unwrap() + 1;
+    let line_length = input.find('\n').unwrap_or(input.len() - 1) + 1;
     let nb_stacks = (line_length + 1) / 4;
     let stack_height = input.chars().filter(|c| c == &'\n').count();
     let mut stacks = Stacks::new();
