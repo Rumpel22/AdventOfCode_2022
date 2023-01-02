@@ -78,5 +78,17 @@ fn main() {
         .filter(|size| size <= &100000)
         .sum::<usize>();
 
-    println!("{sum}");
+    println!("Solution part 1: {sum}");
+
+    let used_disk_space = data.size();
+    let free_disk_space = 70000000 - used_disk_space;
+    let required_disk_space = 30000000 - free_disk_space;
+
+    let folder_size = folders
+        .iter()
+        .map(|dir| dir.size())
+        .filter(|size| size >= &required_disk_space)
+        .min()
+        .unwrap();
+    println!("Solution part 2: {folder_size}");
 }
