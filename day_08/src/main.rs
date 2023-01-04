@@ -38,16 +38,26 @@ impl Trees {
 
                 let (p1, p2) = self.trees.split_at(*index);
                 let left = &p1[(self.width * y)..];
-                let top = &p1[x..];
                 let right = &p2[1..(self.width - x)];
+                let top = if index >= &self.width {
+                    &p1[..=(index - self.width)]
+                } else {
+                    &p1[..0]
+                };
+
                 let bottom = if p2.len() >= self.width {
                     &p2[(self.width)..]
                 } else {
-                    &p2[0..0]
+                    &p2[..0]
                 };
-                (!left.iter().any(|tree| tree >= &height))
+
+                (!left.iter().rev().any(|tree| tree >= &height))
                     || (!right.iter().any(|tree| tree >= &height))
-                    || (!top.iter().step_by(self.width).any(|tree| tree >= &height))
+                    || (!top
+                        .iter()
+                        .rev()
+                        .step_by(self.width)
+                        .any(|tree| tree >= &height))
                     || (!bottom
                         .iter()
                         .step_by(self.width)
