@@ -45,19 +45,9 @@ fn get_new_knot(head: &Position, tail: &Position) -> Position {
     assert!(horizontal_diff <= 2);
     assert!(vertical_diff <= 2);
 
-    if horizontal_diff.abs() == 2 && vertical_diff.abs() == 2 {
+    if horizontal_diff.abs() == 2 || vertical_diff.abs() == 2 {
         Position {
             x: tail.x + horizontal_diff.signum(),
-            y: tail.y + vertical_diff.signum(),
-        }
-    } else if horizontal_diff.abs() == 2 {
-        Position {
-            x: tail.x + horizontal_diff.signum(),
-            y: head.y,
-        }
-    } else if vertical_diff.abs() == 2 {
-        Position {
-            x: head.x,
             y: tail.y + vertical_diff.signum(),
         }
     } else {
