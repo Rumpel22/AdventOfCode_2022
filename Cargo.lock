@@ -64,9 +64,6 @@ version = "0.1.0"
 [[package]]
 name = "day_09"
 version = "0.1.0"
-dependencies = [
- "regex",
-]
 
 [[package]]
 name = "either"

@@ -1,4 +1,3 @@
-use regex::Regex;
 use std::{collections::HashSet, iter, str::FromStr};
 
 #[derive(Clone, Copy)]
@@ -14,63 +13,68 @@ struct Command {
     count: u8,
 }
 
-#[derive(Default, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Default, PartialEq, Eq, Hash, Copy, Clone, Debug)]
 struct Position {
     x: i32,
     y: i32,
 }
 
+type Rope = Vec<Position>;
+
 impl FromStr for Command {
     type Err = &'static str;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let rx = Regex::new("^(U|D|L|R) (\\d+)$").unwrap();
-        let command = match rx.captures(line) {
-            Some(captures) => {
-                let count = captures[2].parse::<u8>().unwrap();
-                let direction = match captures[1].chars().next().unwrap() {
-                    'U' => Direction::Up,
-                    'D' => Direction::Down,
-                    'L' => Direction::Left,
-                    'R' => Direction::Right,
-                    _ => return Err("Something went really wrong."),
-                };
-
-                Command { direction, count }
-            }
-            None => return Err("Invalid line"),
+        let mut parts = line.split_ascii_whitespace();
+        let direction = match parts.next().unwrap().chars().next() {
+            Some('U') => Direction::Up,
+            Some('D') => Direction::Down,
+            Some('L') => Direction::Left,
+            Some('R') => Direction::Right,
+            _ => return Err("Something went really wrong."),
         };
+        let count = parts.next().unwrap().parse::<u8>().unwrap();
 
-        Ok(command)
+        Ok(Command { direction, count })
     }
 }
 
-fn get_new_tail(head: &Position, tail: &Position) -> Position {
+fn get_new_knot(head: &Position, tail: &Position) -> Position {
     let horizontal_diff = head.x - tail.x;
     let vertical_diff = head.y - tail.y;
-    if horizontal_diff == 2 {
+    assert!(horizontal_diff <= 2);
+    assert!(vertical_diff <= 2);
+
+    if horizontal_diff.abs() == 2 && vertical_diff.abs() == 2 {
         Position {
-            x: head.x - 1,
+            x: tail.x + horizontal_diff.signum(),
+            y: tail.y + vertical_diff.signum(),
+        }
+    } else if horizontal_diff.abs() == 2 {
+        Position {
+            x: tail.x + horizontal_diff.signum(),
             y: head.y,
         }
-    } else if horizontal_diff == -2 {
-        Position {
-            x: head.x + 1,
-            y: head.y,
-        }
-    } else if vertical_diff == 2 {
+    } else if vertical_diff.abs() == 2 {
         Position {
             x: head.x,
-            y: head.y - 1,
-        }
-    } else if vertical_diff == -2 {
-        Position {
-            x: head.x,
-            y: head.y + 1,
+            y: tail.y + vertical_diff.signum(),
         }
     } else {
         *tail
     }
+}
+
+fn update_rope(rope: &mut Rope) {
+    let head = rope[0];
+    rope.iter_mut()
+        .skip(1)
+        .scan(head, |prev, knot| {
+            *knot = get_new_knot(prev, knot);
+            *prev = *knot;
+            Some(*knot)
+        })
+        .for_each(|_| {});
 }
 
 fn main() {
@@ -81,22 +85,23 @@ fn main() {
         .map(|line| line.parse::<Command>().unwrap())
         .collect::<Vec<_>>();
 
+    let mut rope = Rope::new();
+    rope.resize(10, Position::default());
+
     let tails = commands
         .iter()
         .flat_map(|command| iter::repeat(command.direction).take(command.count as usize))
-        .scan(
-            (Position::default(), Position::default()),
-            |(head, tail), direction| {
-                match direction {
-                    Direction::Up => head.y += 1,
-                    Direction::Down => head.y -= 1,
-                    Direction::Left => head.x -= 1,
-                    Direction::Right => head.x += 1,
-                };
-                *tail = get_new_tail(head, tail);
-                Some(*tail)
-            },
-        )
+        .scan(rope, |rope, direction| {
+            let head = rope.first_mut().unwrap();
+            match direction {
+                Direction::Up => head.y += 1,
+                Direction::Down => head.y -= 1,
+                Direction::Left => head.x -= 1,
+                Direction::Right => head.x += 1,
+            };
+            update_rope(rope);
+            Some(*(rope.last()).unwrap())
+        })
         .collect::<HashSet<_>>();
 
     println!("The tail is at {} different positions", tails.len());
