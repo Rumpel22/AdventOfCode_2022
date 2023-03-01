@@ -3,6 +3,15 @@ enum Command {
     Noop,
 }
 
+fn value_at_cycle(values: &[(usize, i16)], cycle: usize) -> i16 {
+    let index = values
+        .iter()
+        .take_while(|(cyc, _)| cyc < &cycle)
+        .last()
+        .map_or(1, |(_, value)| *value);
+    index
+}
+
 fn main() {
     let input = include_str!("../data/input.txt");
 
@@ -36,17 +45,27 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
+    // Part I
     let cycles = [20, 60, 100, 140, 180, 220];
     let signal_strengts = cycles.iter().map(|current_cycle| {
-        let index = intermediate_values
-            .iter()
-            .enumerate()
-            .find(|(_, (cyc, _))| cyc >= current_cycle)
-            .unwrap()
-            .0;
-        let value = intermediate_values.get(index - 1).unwrap();
-        value.1 * current_cycle
+        let value = value_at_cycle(&intermediate_values, *current_cycle);
+        value * (*current_cycle as i16)
     });
     let signal_strengths_sum = signal_strengts.sum::<i16>();
     println!("The sum of the signal strengths is {signal_strengths_sum}");
+
+    // Part II
+    let pixels = (1..241)
+        .map(|cycle| {
+            let value = value_at_cycle(&intermediate_values, cycle);
+            let pixel = ((cycle - 1) as i16) % 40;
+            (pixel - value).abs() <= 1
+        })
+        .collect::<Vec<_>>();
+
+    pixels.chunks(40).for_each(|line| {
+        line.iter()
+            .for_each(|pixel| print!("{}", if *pixel { '█' } else { '.' }));
+        println!();
+    })
 }
