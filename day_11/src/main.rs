@@ -1,7 +1,7 @@
 struct Monkey {
-    items: Vec<i32>,
-    inspect: Box<dyn Fn(i32) -> i32>,
-    test: i32,
+    items: Vec<u64>,
+    inspect: Box<dyn Fn(u64) -> u64>,
+    test: u64,
     if_true: usize,
     if_false: usize,
 }
@@ -79,8 +79,10 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    let round_count = 20;
+    let round_count = 10000;
     let mut item_count: [usize; 8] = [0; 8];
+
+    let lcm = monkeys.iter().map(|monkey| monkey.test).product::<u64>();
 
     for _x in 0..round_count {
         for (monkey_id, monkey) in monkeys.iter().enumerate() {
@@ -91,7 +93,7 @@ fn main() {
                         return (*id, *item);
                     }
                     item_count[monkey_id] += 1;
-                    let new_item = (monkey.inspect)(*item) / 3;
+                    let new_item = ((monkey.inspect)(*item)) % lcm;
                     if new_item % monkey.test == 0 {
                         (monkey.if_true, new_item)
                     } else {
