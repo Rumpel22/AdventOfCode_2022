@@ -115,19 +115,31 @@ impl Map<u8> {
         let index = self.values.iter().position(|c| *c == b'E');
         index.map(|index| self.position(index))?
     }
+
+    fn find_lowest_fields(&self) -> Vec<Field> {
+        self.values
+            .iter()
+            .enumerate()
+            .filter(|(_, field)| **field == b'a' || **field == b'S')
+            .map(|(index, _)| self.position(index).unwrap())
+            .collect::<Vec<_>>()
+    }
 }
 
 fn main() {
     let input = include_str!("../data/input.txt");
     let map = input.parse::<Map<u8>>().unwrap();
 
-    let start = map.start().unwrap();
+    // let start = vec![map.start().unwrap()];
+    let start = map.find_lowest_fields();
     let end = map.end().unwrap();
 
     let mut steps = Map::<Option<usize>>::new(map.width, map.height);
-    steps[start] = Some(0);
     let mut options = VecDeque::<Field>::new();
-    options.push_back(start);
+    for s in start {
+        steps[s] = Some(0);
+        options.push_back(s);
+    }
 
     while let Some(current_field) = options.pop_front() {
         if current_field == end {
@@ -135,7 +147,7 @@ fn main() {
                 "Goal reached after {} steps.",
                 steps[current_field].unwrap()
             );
-            break;
+            return;
         }
         let current_height = match map[current_field] {
             b'S' => b'a',
@@ -156,4 +168,5 @@ fn main() {
             }
         }
     }
+    println!("Found no path...");
 }
