@@ -106,6 +106,7 @@ impl<T: std::default::Default + std::clone::Clone> Map<T> {
 }
 
 impl Map<u8> {
+    #[allow(dead_code)]
     fn start(&self) -> Option<Field> {
         let index = self.values.iter().position(|c| *c == b'S');
         index.map(|index| self.position(index))?
