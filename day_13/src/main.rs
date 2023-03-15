@@ -81,25 +81,29 @@ impl PartialEq for Entry {
 
 impl PartialOrd for Entry {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        println!("self: {:?}, other: {:?}", self, other);
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // println!("self: {:?}, other: {:?}", self, other);
         match (self, other) {
-            (Entry::Number(left), Entry::Number(right)) => left.partial_cmp(right),
-            (Entry::Number(_), Entry::List(_)) => Self::List(vec![self.clone()]).partial_cmp(other),
-            (Entry::List(_), Entry::Number(_)) => {
-                self.partial_cmp(&Self::List(vec![other.clone()]))
-            }
+            (Entry::Number(left), Entry::Number(right)) => left.cmp(right),
+            (Entry::Number(_), Entry::List(_)) => Self::List(vec![self.clone()]).cmp(other),
+            (Entry::List(_), Entry::Number(_)) => self.cmp(&Self::List(vec![other.clone()])),
             (Entry::List(left), Entry::List(right)) => {
                 let mut l = left.iter();
                 let mut r = right.iter();
                 loop {
                     match (l.next(), r.next()) {
-                        (None, None) => return Some(std::cmp::Ordering::Equal),
-                        (None, Some(_)) => return Some(std::cmp::Ordering::Less),
-                        (Some(_), None) => return Some(std::cmp::Ordering::Greater),
+                        (None, None) => return std::cmp::Ordering::Equal,
+                        (None, Some(_)) => return std::cmp::Ordering::Less,
+                        (Some(_), None) => return std::cmp::Ordering::Greater,
                         (Some(x), Some(y)) => {
                             let ordering = x.partial_cmp(y).unwrap();
                             if ordering != std::cmp::Ordering::Equal {
-                                return Some(ordering);
+                                return ordering;
                             }
                         }
                     }
@@ -108,6 +112,8 @@ impl PartialOrd for Entry {
         }
     }
 }
+
+impl Eq for Entry {}
 
 struct Pair {
     left: Entry,
@@ -144,8 +150,30 @@ fn main() {
 
     let valid_pair_numbers = valids
         .map(|(index, _)| index + 1)
-        .inspect(|index| println!("{} is a valid pair", { index }))
+        // .inspect(|index| println!("{} is a valid pair", { index }))
         .sum::<usize>();
 
     println!("Sum of valid pair numbers is {}", valid_pair_numbers);
+
+    let mut lines = input
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|input| input.parse::<Entry>().unwrap())
+        .collect::<Vec<_>>();
+
+    let divider_packet_1 = "[[2]]".parse::<Entry>().unwrap();
+    let divider_packet_2 = "[[6]]".parse::<Entry>().unwrap();
+    lines.push(divider_packet_1.clone());
+    lines.push(divider_packet_2.clone());
+
+    lines.sort();
+
+    let decoder_key = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| **line == divider_packet_1 || **line == divider_packet_2)
+        .map(|(line_number, _)| line_number + 1)
+        .product::<usize>();
+
+    println!("The decoder key is {}", decoder_key);
 }
