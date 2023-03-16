@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Debug, str::FromStr};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    ops::{Index, IndexMut},
+    str::FromStr,
+};
 
 use itertools::Itertools;
 
@@ -14,7 +19,7 @@ impl FromStr for Coordinate {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, PartialEq)]
 enum Unit {
     Rock,
     Air,
@@ -50,6 +55,23 @@ impl Debug for Map {
             writeln!(f, "")?
         }
         Ok(())
+    }
+}
+
+impl Index<Coordinate> for Map {
+    type Output = Unit;
+
+    fn index(&self, index: Coordinate) -> &Self::Output {
+        self.fields.get(&index).unwrap_or(&Unit::Air)
+    }
+}
+
+impl IndexMut<Coordinate> for Map {
+    fn index_mut(&mut self, index: Coordinate) -> &mut Self::Output {
+        if !self.fields.contains_key(&index) {
+            self.fields.insert(index, Unit::Air);
+        }
+        self.fields.get_mut(&index).unwrap()
     }
 }
 
@@ -119,6 +141,35 @@ fn main() {
         .collect::<Vec<_>>();
 
     let mut map = Map::new(&wall_units);
+    let mut sand_units = 0;
+
+    loop {
+        let mut sand = Coordinate(500, 0);
+        loop {
+            let down = Coordinate(sand.0, sand.1 + 1);
+            let left = Coordinate(sand.0 - 1, sand.1 + 1);
+            let right = Coordinate(sand.0 + 1, sand.1 + 1);
+            if map[down] == Unit::Air {
+                sand = down;
+            } else if map[left] == Unit::Air {
+                sand = left;
+            } else if map[right] == Unit::Air {
+                sand = right;
+            } else {
+                map[sand] = Unit::Sand;
+                break;
+            }
+            if sand.1 >= map.y_limits.1 {
+                break;
+            }
+        }
+        if sand.1 >= map.y_limits.1 {
+            break;
+        }
+
+        sand_units += 1;
+    }
 
     println!("{:?}", map);
+    println!("There are {sand_units} units of sand.");
 }
