@@ -159,11 +159,13 @@ fn main() {
                 map[sand] = Unit::Sand;
                 break;
             }
-            if sand.1 >= map.y_limits.1 {
+            if sand.1 == map.y_limits.1 + 1 {
+                map[sand] = Unit::Sand;
                 break;
             }
         }
-        if sand.1 >= map.y_limits.1 {
+        if sand.1 == 0 {
+            sand_units += 1;
             break;
         }
 
