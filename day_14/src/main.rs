@@ -115,28 +115,23 @@ fn main() {
     let wall_units = walls
         .iter()
         .flat_map(|wall| {
-            wall.as_slice()
-                .windows(2)
-                .flat_map(|wall_part| {
-                    let start = wall_part[0];
-                    let end = wall_part[1];
+            wall.as_slice().windows(2).flat_map(|wall_part| {
+                let start = wall_part[0];
+                let end = wall_part[1];
 
-                    let x_range = match start.0 <= end.0 {
-                        true => start.0..=end.0,
-                        false => end.0..=start.0,
-                    };
-                    let y_range = match start.1 <= end.1 {
-                        true => start.1..=end.1,
-                        false => end.1..=start.1,
-                    };
+                let x_range = match start.0 <= end.0 {
+                    true => start.0..=end.0,
+                    false => end.0..=start.0,
+                };
+                let y_range = match start.1 <= end.1 {
+                    true => start.1..=end.1,
+                    false => end.1..=start.1,
+                };
 
-                    let sfd = x_range
-                        .cartesian_product(y_range)
-                        .map(|(x, y)| Coordinate(x, y))
-                        .collect::<Vec<_>>();
-                    sfd
-                })
-                .collect::<Vec<_>>()
+                x_range
+                    .cartesian_product(y_range)
+                    .map(|(x, y)| Coordinate(x, y))
+            })
         })
         .collect::<Vec<_>>();
 
@@ -144,27 +139,27 @@ fn main() {
     let mut sand_units = 0;
 
     loop {
-        let mut sand = Coordinate(500, 0);
+        let mut current = Coordinate(500, 0);
         loop {
-            let down = Coordinate(sand.0, sand.1 + 1);
-            let left = Coordinate(sand.0 - 1, sand.1 + 1);
-            let right = Coordinate(sand.0 + 1, sand.1 + 1);
+            let down = Coordinate(current.0, current.1 + 1);
+            let left = Coordinate(current.0 - 1, current.1 + 1);
+            let right = Coordinate(current.0 + 1, current.1 + 1);
             if map[down] == Unit::Air {
-                sand = down;
+                current = down;
             } else if map[left] == Unit::Air {
-                sand = left;
+                current = left;
             } else if map[right] == Unit::Air {
-                sand = right;
+                current = right;
             } else {
-                map[sand] = Unit::Sand;
+                map[current] = Unit::Sand;
                 break;
             }
-            if sand.1 == map.y_limits.1 + 1 {
-                map[sand] = Unit::Sand;
+            if current.1 == map.y_limits.1 + 1 {
+                map[current] = Unit::Sand;
                 break;
             }
         }
-        if sand.1 == 0 {
+        if current.1 == 0 {
             sand_units += 1;
             break;
         }
@@ -172,6 +167,5 @@ fn main() {
         sand_units += 1;
     }
 
-    println!("{:?}", map);
     println!("There are {sand_units} units of sand.");
 }
