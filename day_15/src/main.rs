@@ -85,7 +85,7 @@ impl Ranges {
 
 struct Sensor {
     position: Coordinate,
-    distance: i64,
+    distance: u64,
 }
 
 struct Beacon {
@@ -115,8 +115,8 @@ fn main() {
             (sensor_coordinate, beacon_coordinate)
         })
         .map(|(sensor_coordinate, beacon_coordinate)| {
-            let distance = (sensor_coordinate.x - beacon_coordinate.x).abs()
-                + (sensor_coordinate.y - beacon_coordinate.y).abs();
+            let distance = sensor_coordinate.x.abs_diff(beacon_coordinate.x)
+                + sensor_coordinate.y.abs_diff(beacon_coordinate.y);
             (
                 Sensor {
                     position: sensor_coordinate,
@@ -138,10 +138,10 @@ fn main() {
     let ranges_on_row = sensors
         .iter()
         .filter_map(|sensor| {
-            let remaining_x = sensor.distance - (sensor.position.y - row).abs();
+            let remaining_x = sensor.distance as i64 - sensor.position.y.abs_diff(row) as i64;
             Range::new(
-                sensor.position.x - remaining_x,
-                sensor.position.x + remaining_x,
+                sensor.position.x - remaining_x as i64,
+                sensor.position.x + remaining_x as i64,
             )
         })
         .fold(Ranges::default(), |ranges, range| ranges.merge(&range));
@@ -154,10 +154,10 @@ fn main() {
         let ranges_on_row = sensors
             .iter()
             .filter_map(|sensor| {
-                let remaining_x = sensor.distance - (sensor.position.y - row).abs();
+                let remaining_x = sensor.distance as i64 - sensor.position.y.abs_diff(row) as i64;
                 Range::new(
-                    sensor.position.x - remaining_x,
-                    sensor.position.x + remaining_x,
+                    sensor.position.x - remaining_x as i64,
+                    sensor.position.x + remaining_x as i64,
                 )
             })
             .fold(Ranges::default(), |ranges, range| {
