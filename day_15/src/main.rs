@@ -35,30 +35,51 @@ impl Range {
         (self.end - self.start + 1) as usize
     }
 
-    fn merge(&self, range: &[Range]) -> Vec<Range> {
+    fn contains(&self, number: i64) -> bool {
+        number >= self.start && number <= self.end
+    }
+
+    fn limit(&self, lower: i64, upper: i64) -> Self {
+        Self {
+            start: self.start.max(lower),
+            end: self.end.min(upper),
+        }
+    }
+}
+
+#[derive(Default)]
+struct Ranges(Vec<Range>);
+
+impl Ranges {
+    fn len(&self) -> usize {
+        self.0.iter().map(|range| range.len()).sum()
+    }
+
+    fn merge(&self, range: &Range) -> Ranges {
         let mut merged = false;
-        let mut new_ranges = Vec::with_capacity(range.len());
-        for r in range {
-            if r.start > self.end || r.end < self.start {
-                new_ranges.push(*r);
+        let mut new_ranges = Ranges::default();
+        for r in &self.0 {
+            if range.start > r.end || range.end < r.start {
+                new_ranges.0.push(*r);
             } else {
                 if merged {
-                    new_ranges = r.merge(&new_ranges)
+                    new_ranges = new_ranges.merge(r);
                 } else {
                     merged = true;
                     new_ranges
-                        .push(Self::new(self.start.min(r.start), self.end.max(r.end)).unwrap());
+                        .0
+                        .push(Range::new(range.start.min(r.start), range.end.max(r.end)).unwrap());
                 }
             };
         }
         if !merged {
-            new_ranges.push(*self);
+            new_ranges.0.push(*range);
         }
         new_ranges
     }
 
     fn contains(&self, number: i64) -> bool {
-        number >= self.start && number <= self.end
+        self.0.iter().any(|range| range.contains(number))
     }
 }
 
@@ -123,10 +144,37 @@ fn main() {
                 sensor.position.x + remaining_x,
             )
         })
-        .fold(Vec::<Range>::default(), |vec, range| range.merge(&vec));
+        .fold(Ranges::default(), |ranges, range| ranges.merge(&range));
 
-    let uniques_on_row =
-        ranges_on_row.iter().fold(0, |sum, range| sum + range.len()) - beacons_on_row;
+    let uniques_on_row = ranges_on_row.len() - beacons_on_row;
 
     println!("There are {} covered fields on row {row}", uniques_on_row);
+
+    for row in 0..=4000000 {
+        let ranges_on_row = sensors
+            .iter()
+            .filter_map(|sensor| {
+                let remaining_x = sensor.distance - (sensor.position.y - row).abs();
+                Range::new(
+                    sensor.position.x - remaining_x,
+                    sensor.position.x + remaining_x,
+                )
+            })
+            .fold(Ranges::default(), |ranges, range| {
+                ranges.merge(&range.limit(0, 4000000))
+            });
+
+        if ranges_on_row.len() != 4000001 {
+            let x = (0..=4000000)
+                .filter(|number| !ranges_on_row.contains(*number))
+                .next()
+                .unwrap();
+            println!("Found uncovered field at x={x}, y={row}.");
+            println!(
+                "The tuning frequency for this field is {}",
+                x * 4000000 + row
+            );
+            break;
+        }
+    }
 }
