@@ -1,6 +1,5 @@
 use std::{collections::HashSet, str::FromStr};
 
-use itertools::Itertools;
 use regex::Regex;
 
 struct Coordinate {
@@ -15,6 +14,51 @@ impl FromStr for Coordinate {
         let x = parts.next().unwrap().parse().unwrap();
         let y = parts.next().unwrap().parse().unwrap();
         Ok(Self { x, y })
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Range {
+    start: i64,
+    end: i64,
+}
+
+impl Range {
+    fn new(start: i64, end: i64) -> Option<Self> {
+        match start <= end {
+            true => Some(Self { start, end }),
+            false => None,
+        }
+    }
+
+    fn len(&self) -> usize {
+        (self.end - self.start + 1) as usize
+    }
+
+    fn merge(&self, range: &[Range]) -> Vec<Range> {
+        let mut merged = false;
+        let mut new_ranges = Vec::with_capacity(range.len());
+        for r in range {
+            if r.start > self.end || r.end < self.start {
+                new_ranges.push(*r);
+            } else {
+                if merged {
+                    new_ranges = r.merge(&new_ranges)
+                } else {
+                    merged = true;
+                    new_ranges
+                        .push(Self::new(self.start.min(r.start), self.end.max(r.end)).unwrap());
+                }
+            };
+        }
+        if !merged {
+            new_ranges.push(*self);
+        }
+        new_ranges
+    }
+
+    fn contains(&self, number: i64) -> bool {
+        number >= self.start && number <= self.end
     }
 }
 
@@ -70,15 +114,19 @@ fn main() {
         .filter(|y_coordinate| y_coordinate == &row)
         .collect::<HashSet<_>>()
         .len();
-    let uniques_on_rows = sensors
+    let ranges_on_row = sensors
         .iter()
-        .flat_map(|sensor| {
+        .filter_map(|sensor| {
             let remaining_x = sensor.distance - (sensor.position.y - row).abs();
-            (sensor.position.x - remaining_x)..=(sensor.position.x + remaining_x)
+            Range::new(
+                sensor.position.x - remaining_x,
+                sensor.position.x + remaining_x,
+            )
         })
-        .unique()
-        .count()
-        - beacons_on_row;
+        .fold(Vec::<Range>::default(), |vec, range| range.merge(&vec));
 
-    println!("There are {} covered fields on row {row}", uniques_on_rows);
+    let uniques_on_row =
+        ranges_on_row.iter().fold(0, |sum, range| sum + range.len()) - beacons_on_row;
+
+    println!("There are {} covered fields on row {row}", uniques_on_row);
 }
