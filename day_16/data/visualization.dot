@@ -1,0 +1,77 @@
+strict graph G {
+ZN -- {SD ZV}
+HO -- {LT}
+FT -- {DW BV JA FB TV}
+AD -- {AA JG}
+GE -- {JG RD}
+GI -- {WJ RD}
+RM -- {BU WJ}
+GV -- {WB HS}
+VA -- {AA HS}
+TJ -- {CK}
+WB -- {GV EV}
+DV -- {OI NK}
+EL -- {HS YC}
+KU -- {WJ OI}
+WI -- {SD AN GS JV}
+JG -- {SV BU GC GE AD}
+TC -- {TV WJ}
+GC -- {JG JA}
+LS -- {JH YP}
+OI -- {KU DV}
+ZH -- {YZ RD}
+YZ -- {ZH AA}
+YP -- {KS LS}
+CK -- {EG TJ}
+NY -- {HS UU}
+IQ -- {YC}
+HI -- {SS RD}
+DW -- {FT JH}
+EV -- {SV WB SS GS}
+SV -- {JG EV}
+BU -- {JG RM}
+GS -- {EV WI}
+UY -- {WJ FE}
+AA -- {VA YZ AD FB}
+SD -- {WI ZN}
+KS -- {YP}
+RD -- {GI HI BV ZH GE}
+ZV -- {ZN}
+HB -- {HS AN}
+UU -- {EG NY}
+SS -- {HI EV}
+HS -- {HB EL VA GV NY}
+LT -- {DS HO}
+JH -- {LS FE QU NK DW}
+AN -- {HB WI}
+NK -- {DV JH}
+JA -- {GC FT}
+EG -- {CK UU DS}
+JV -- {QU WI}
+WJ -- {GI RM KU UY TC}
+FE -- {JH UY}
+TV -- {FT TC}
+YC -- {IQ EL}
+QU -- {JV JH}
+DS -- {LT EG}
+BV -- {FT RD}
+FB -- {AA FT}
+
+AA [fillcolor="#ff3333", style="filled"]
+HO [fillcolor="#cccccc", style="filled", xlabel="17"] 
+FT [fillcolor="#cccccc", style="filled", xlabel=" 6"]
+TJ [fillcolor="#cccccc", style="filled", xlabel="21"] 
+DV [fillcolor="#cccccc", style="filled", xlabel="19"] 
+WI [fillcolor="#cccccc", style="filled", xlabel="16"] 
+JG [fillcolor="#cccccc", style="filled", xlabel=" 3"]
+IQ [fillcolor="#cccccc", style="filled", xlabel="18"] 
+EV [fillcolor="#cccccc", style="filled", xlabel=" 7"]
+KS [fillcolor="#cccccc", style="filled", xlabel="23"] 
+RD [fillcolor="#cccccc", style="filled", xlabel=" 4"]
+ZV [fillcolor="#cccccc", style="filled", xlabel="15"] 
+HS [fillcolor="#cccccc", style="filled", xlabel="12"] 
+JH [fillcolor="#cccccc", style="filled", xlabel=" 5"]
+EG [fillcolor="#cccccc", style="filled", xlabel="14"] 
+WJ [fillcolor="#cccccc", style="filled", xlabel=" 8"]
+
+}
