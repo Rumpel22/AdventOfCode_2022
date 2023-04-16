@@ -1,60 +1,14 @@
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::HashMap;
 
 use regex::Regex;
 
 struct Valve {
+    name: &'static str,
     flow_rate: u8,
     neighbors: Vec<&'static str>,
 }
-
-#[derive(Clone)]
-struct State {
-    remaining_time: u16,
-    cumulated_pressure: u16,
-    pressure_per_minute: u16,
-    closed_valves: Vec<&'static str>,
-    room: &'static str,
-}
-
-impl State {
-    fn potential_pressure(&self, valves: &HashMap<&str, Valve>) -> u16 {
-        self.closed_valves
-            .iter()
-            .map(|valve| valves[*valve].flow_rate as u16)
-            .sum::<u16>()
-            * self.remaining_time
-            + self.pressure_per_minute * self.remaining_time
-            + self.cumulated_pressure
-    }
-}
-
-impl PartialEq for State {
-    fn eq(&self, other: &Self) -> bool {
-        self.remaining_time == other.remaining_time
-            && self.cumulated_pressure == other.cumulated_pressure
-            && self.pressure_per_minute == other.pressure_per_minute
-            && self.closed_valves == other.closed_valves
-            && self.room == other.room
-    }
-}
-
-impl Eq for State {}
-
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.pressure_per_minute
-            .partial_cmp(&other.pressure_per_minute)
-    }
-}
-
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
 impl Valve {
-    fn parse(line: &'static str) -> Option<(&'static str, Self)> {
+    fn parse(line: &'static str) -> Option<Self> {
         let rx = Regex::new(r"^Valve (.{2}) has flow rate=(\d+); tunnels? leads? to valves? (.+)$")
             .ok()?;
         let mut captures = rx.captures_iter(line);
@@ -68,77 +22,73 @@ impl Valve {
             .get(3)
             .and_then(|c| Some(c.as_str().split(", ").collect::<Vec<_>>()))?;
 
-        Some((
+        Some(Self {
             name,
-            Self {
-                flow_rate,
-                neighbors,
-            },
-        ))
+            flow_rate,
+            neighbors,
+        })
+    }
+}
+
+struct DistanceMap<'a>(HashMap<&'a str, HashMap<&'a str, u8>>);
+
+impl DistanceMap<'_> {
+    fn new(valves: &[Valve]) -> Self {
+        let mut map = HashMap::<&str, HashMap<&str, u8>>::with_capacity(valves.len());
+
+        for valve in valves {
+            let mut inner_map = HashMap::<&str, u8>::with_capacity(valves.len());
+            inner_map.insert(valve.name, 0);
+            let mut next = valve.neighbors.clone();
+            let mut distance = 1;
+
+            while inner_map.len() < valves.len() {
+                next = next
+                    .iter()
+                    .flat_map(|&other| {
+                        if inner_map.contains_key(other) {
+                            vec![]
+                        } else {
+                            inner_map.insert(other, distance);
+
+                            valves
+                                .iter()
+                                .find(|&v| v.name == other)
+                                .unwrap()
+                                .neighbors
+                                .clone()
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                distance += 1;
+            }
+
+            map.insert(valve.name, inner_map);
+        }
+
+        Self(map)
+    }
+
+    fn distance(&self, from: &str, to: &str) -> u8 {
+        self.0[from][to]
     }
 }
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
     let valves = input
         .lines()
         .filter_map(|line| Valve::parse(line))
-        .collect::<HashMap<&str, Valve>>();
+        .collect::<Vec<_>>();
     let closed_valves = valves
         .iter()
-        .filter_map(|(key, value)| match value.flow_rate {
+        .filter_map(|valve| match valve.flow_rate {
             0 => None,
-            _ => Some(*key),
+            _ => Some(valve.name),
         })
         .collect::<Vec<_>>();
 
-    let initial_state = State {
-        remaining_time: 30,
-        cumulated_pressure: 0,
-        pressure_per_minute: 0,
-        closed_valves,
-        room: "AA",
-    };
+    let distance_map = DistanceMap::new(&valves);
 
-    let mut states = BinaryHeap::new();
-    states.push(initial_state);
-    let mut max = u16::MIN;
-
-    while !states.is_empty() {
-        let state = states.pop().unwrap();
-        let room = state.room;
-
-        if state.potential_pressure(&valves) < max {
-            continue;
-        }
-
-        max = max.max(state.cumulated_pressure);
-
-        if state.closed_valves.contains(&room) && state.remaining_time > 0 {
-            let mut remaining_valves = state.closed_valves.clone();
-            remaining_valves.retain(|valve| valve != &room);
-            states.push(State {
-                remaining_time: state.remaining_time - 1,
-                pressure_per_minute: state.pressure_per_minute
-                    + valves[&state.room].flow_rate as u16,
-                cumulated_pressure: state.cumulated_pressure + state.pressure_per_minute,
-                closed_valves: remaining_valves,
-                room,
-            })
-        }
-
-        if state.remaining_time > 0 {
-            for neighbor in &valves[room].neighbors {
-                states.push(State {
-                    room: neighbor,
-                    remaining_time: state.remaining_time - 1,
-                    closed_valves: state.closed_valves.clone(),
-                    pressure_per_minute: state.pressure_per_minute,
-                    cumulated_pressure: state.cumulated_pressure + state.pressure_per_minute,
-                });
-            }
-        }
-    }
-
-    println!("The max. pressure released is {}", max);
+    // println!("The max. pressure released is {}", max);
 }
