@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashMap};
 
 use regex::Regex;
 
@@ -25,6 +25,31 @@ impl State {
             * self.remaining_time
             + self.pressure_per_minute * self.remaining_time
             + self.cumulated_pressure
+    }
+}
+
+impl PartialEq for State {
+    fn eq(&self, other: &Self) -> bool {
+        self.remaining_time == other.remaining_time
+            && self.cumulated_pressure == other.cumulated_pressure
+            && self.pressure_per_minute == other.pressure_per_minute
+            && self.closed_valves == other.closed_valves
+            && self.room == other.room
+    }
+}
+
+impl Eq for State {}
+
+impl PartialOrd for State {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.pressure_per_minute
+            .partial_cmp(&other.pressure_per_minute)
+    }
+}
+
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -75,12 +100,17 @@ fn main() {
         room: "AA",
     };
 
-    let mut states = vec![initial_state];
+    let mut states = BinaryHeap::new();
+    states.push(initial_state);
     let mut max = u16::MIN;
 
     while !states.is_empty() {
         let state = states.pop().unwrap();
         let room = state.room;
+
+        if state.potential_pressure(&valves) < max {
+            continue;
+        }
 
         max = max.max(state.cumulated_pressure);
 
@@ -108,9 +138,6 @@ fn main() {
                 });
             }
         }
-
-        states.retain(|state| state.potential_pressure(&valves) >= max);
-        states.sort_unstable_by(|a, b| a.pressure_per_minute.cmp(&b.pressure_per_minute));
     }
 
     println!("The max. pressure released is {}", max);
