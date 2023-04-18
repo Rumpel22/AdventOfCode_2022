@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
-struct Valve {
-    name: &'static str,
+struct Valve<'a> {
+    name: &'a str,
     flow_rate: u8,
-    neighbors: Vec<&'static str>,
+    neighbors: Vec<&'a str>,
 }
-impl Valve {
-    fn parse(line: &'static str) -> Option<Self> {
+impl<'a> Valve<'a> {
+    fn parse(line: &'a str) -> Option<Self> {
         let rx = Regex::new(r"^Valve (.{2}) has flow rate=(\d+); tunnels? leads? to valves? (.+)$")
             .ok()?;
         let mut captures = rx.captures_iter(line);
@@ -32,8 +32,8 @@ impl Valve {
 
 struct DistanceMap<'a>(HashMap<&'a str, HashMap<&'a str, u8>>);
 
-impl DistanceMap<'_> {
-    fn new(valves: &[Valve]) -> Self {
+impl<'a> DistanceMap<'a> {
+    fn new(valves: &[Valve<'a>]) -> Self {
         let mut map = HashMap::<&str, HashMap<&str, u8>>::with_capacity(valves.len());
 
         for valve in valves {
