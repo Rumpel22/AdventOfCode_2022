@@ -1,0 +1,22 @@
+strict graph G {
+
+AA -- {DD II BB}
+BB -- {CC AA}
+CC -- {DD BB}
+DD -- {CC AA EE}
+EE -- {FF DD}
+FF -- {EE GG}
+GG -- {FF HH}
+HH -- {GG}
+II -- {AA JJ}
+JJ -- {II}
+
+AA [fillcolor="#ff3333", style="filled"]
+BB [fillcolor="#cccccc", style="filled", xlabel="13"]
+CC [fillcolor="#cccccc", style="filled", xlabel="2"]
+DD [fillcolor="#cccccc", style="filled", xlabel="20"]
+EE [fillcolor="#cccccc", style="filled", xlabel="3"]
+HH [fillcolor="#cccccc", style="filled", xlabel="22"]
+JJ [fillcolor="#cccccc", style="filled", xlabel="21"]
+
+}
