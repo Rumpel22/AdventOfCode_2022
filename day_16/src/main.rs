@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap};
 
 use regex::Regex;
 
@@ -76,9 +76,9 @@ impl<'a> DistanceMap<'a> {
 
 struct State<'a> {
     room: &'a str,
-    closed_valves: Vec<&'a str>,
     time: u8,
     cumulated: u16,
+    closed_valves: Vec<&'a str>,
     opened_valves: Vec<&'a str>,
 }
 
@@ -115,6 +115,41 @@ impl<'a> State<'a> {
     }
 }
 
+impl Eq for State<'_> {}
+
+impl PartialEq for State<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.time == other.time
+            && self.cumulated == other.cumulated
+            && self.room == other.room
+            && self.closed_valves == other.closed_valves
+    }
+}
+
+impl PartialOrd for State<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.cumulated.partial_cmp(&other.cumulated) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
+        match self.time.partial_cmp(&other.time) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
+        match self.room.partial_cmp(&other.room) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
+        self.closed_valves.partial_cmp(&other.closed_valves)
+    }
+}
+
+impl Ord for State<'_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
 struct Flows<'a>(HashMap<&'a str, u8>);
 
 fn main() {
@@ -147,8 +182,8 @@ fn main() {
         opened_valves: vec![],
     };
 
-    let mut open_options = VecDeque::new();
-    open_options.push_back(initial_option);
+    let mut open_options = BinaryHeap::new();
+    open_options.push(initial_option);
 
     let mut max_released_pressure = 0;
     let mut max_size = 0;
@@ -156,8 +191,8 @@ fn main() {
     let mut path = vec![];
 
     while !open_options.is_empty() {
-        let state = open_options.pop_front().unwrap();
         state_counter += 1;
+        let state = open_options.pop().unwrap();
         if state.cumulated > max_released_pressure {
             max_released_pressure = state.cumulated;
             path = state.opened_valves.clone();
