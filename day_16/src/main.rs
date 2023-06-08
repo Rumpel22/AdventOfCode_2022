@@ -147,9 +147,8 @@ fn main() {
 
     while !open_options.is_empty() {
         let state = open_options.pop_front().unwrap();
-        if state.cumulated > max_released_pressure {
-            max_released_pressure = state.cumulated;
-        }
+        max_released_pressure = max_released_pressure.max(state.cumulated);
+
         if state.time > 0 {
             let new_states = state.get_nexts(flows.0[state.room], &distance_map);
             open_options.extend(new_states.into_iter());
