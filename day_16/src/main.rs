@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use regex::Regex;
 
@@ -74,6 +74,43 @@ impl<'a> DistanceMap<'a> {
     }
 }
 
+struct State<'a> {
+    room: &'a str,
+    closed_valves: Vec<&'a str>,
+    time: u8,
+    cumulated: u16,
+}
+
+impl<'a> State<'a> {
+    fn get_nexts(&self, flow: u8, distance_map: &DistanceMap<'a>) -> Vec<State<'a>> {
+        self.closed_valves
+            .iter()
+            .map(|new_room| {
+                let closed_valves = self
+                    .closed_valves
+                    .iter()
+                    .filter(|&room| room != new_room)
+                    .map(|room| *room)
+                    .collect::<Vec<_>>();
+                let distance = distance_map.distance(self.room, new_room);
+                let mut time = self.time.saturating_sub(distance);
+                if flow > 0 && time > 0 {
+                    time = time.saturating_sub(1);
+                }
+                let cumulated = self.cumulated + flow as u16 * (self.time - 1) as u16;
+                Self {
+                    room: new_room,
+                    time,
+                    cumulated,
+                    closed_valves,
+                }
+            })
+            .collect::<Vec<_>>()
+    }
+}
+
+struct Flows<'a>(HashMap<&'a str, u8>);
+
 fn main() {
     let input = include_str!("../data/input.txt");
     let valves = input
@@ -89,6 +126,35 @@ fn main() {
         .collect::<Vec<_>>();
 
     let distance_map = DistanceMap::new(&valves);
+    let flows = Flows(
+        valves
+            .iter()
+            .map(|valve| (valve.name, valve.flow_rate))
+            .collect(),
+    );
 
-    // println!("The max. pressure released is {}", max);
+    let initial_option = State {
+        cumulated: 0,
+        time: 30,
+        closed_valves,
+        room: "AA",
+    };
+
+    let mut open_options = VecDeque::new();
+    open_options.push_back(initial_option);
+
+    let mut max_released_pressure = 0;
+
+    while !open_options.is_empty() {
+        let state = open_options.pop_front().unwrap();
+        if state.cumulated > max_released_pressure {
+            max_released_pressure = state.cumulated;
+        }
+        if state.time > 0 {
+            let new_states = state.get_nexts(flows.0[state.room], &distance_map);
+            open_options.extend(new_states.into_iter());
+        }
+    }
+
+    println!("The max. pressure released is {}", max_released_pressure);
 }
