@@ -79,6 +79,7 @@ struct State<'a> {
     closed_valves: Vec<&'a str>,
     time: u8,
     cumulated: u16,
+    opened_valves: Vec<&'a str>,
 }
 
 impl<'a> State<'a> {
@@ -98,11 +99,16 @@ impl<'a> State<'a> {
                     time = time.saturating_sub(1);
                 }
                 let cumulated = self.cumulated + flow as u16 * (self.time - 1) as u16;
+
+                let mut opened_valves = self.opened_valves.clone();
+                opened_valves.push(self.room);
+
                 Self {
                     room: new_room,
                     time,
                     cumulated,
                     closed_valves,
+                    opened_valves,
                 }
             })
             .collect::<Vec<_>>()
@@ -138,22 +144,34 @@ fn main() {
         time: 30,
         closed_valves,
         room: "AA",
+        opened_valves: vec![],
     };
 
     let mut open_options = VecDeque::new();
     open_options.push_back(initial_option);
 
     let mut max_released_pressure = 0;
+    let mut max_size = 0;
+    let mut state_counter = 0;
+    let mut path = vec![];
 
     while !open_options.is_empty() {
         let state = open_options.pop_front().unwrap();
-        max_released_pressure = max_released_pressure.max(state.cumulated);
+        state_counter += 1;
+        if state.cumulated > max_released_pressure {
+            max_released_pressure = state.cumulated;
+            path = state.opened_valves.clone();
+        }
 
         if state.time > 0 {
             let new_states = state.get_nexts(flows.0[state.room], &distance_map);
             open_options.extend(new_states.into_iter());
         }
+        max_size = open_options.len().max(max_size);
     }
 
     println!("The max. pressure released is {}", max_released_pressure);
+    println!("The path is {:?}", path);
+    println!("The max. queue length is {}", max_size);
+    println!("It took {} steps", state_counter);
 }
