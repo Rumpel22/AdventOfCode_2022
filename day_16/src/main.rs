@@ -2,13 +2,19 @@ use std::collections::{BinaryHeap, HashMap};
 
 use regex::Regex;
 
+#[derive(Clone, Copy)]
+enum Action<'a> {
+    Move(&'a str),
+    Open(u8),
+}
+
+#[derive(Clone)]
 struct Valve<'a> {
-    name: &'a str,
     flow_rate: u8,
     neighbors: Vec<&'a str>,
 }
 impl<'a> Valve<'a> {
-    fn parse(line: &'a str) -> Option<Self> {
+    fn parse(line: &'a str) -> Option<(&'a str, Self)> {
         let rx = Regex::new(r"^Valve (.{2}) has flow rate=(\d+); tunnels? leads? to valves? (.+)$")
             .ok()?;
         let mut captures = rx.captures_iter(line);
@@ -22,117 +28,62 @@ impl<'a> Valve<'a> {
             .get(3)
             .and_then(|c| Some(c.as_str().split(", ").collect::<Vec<_>>()))?;
 
-        Some(Self {
+        Some((
             name,
-            flow_rate,
-            neighbors,
-        })
-    }
-}
-
-struct DistanceMap<'a>(HashMap<&'a str, HashMap<&'a str, u8>>);
-
-impl<'a> DistanceMap<'a> {
-    fn new(valves: &[Valve<'a>]) -> Self {
-        let mut map = HashMap::<&str, HashMap<&str, u8>>::with_capacity(valves.len());
-
-        for valve in valves {
-            let mut inner_map = HashMap::<&str, u8>::with_capacity(valves.len());
-            inner_map.insert(valve.name, 0);
-            let mut next = valve.neighbors.clone();
-            let mut distance = 1;
-
-            while inner_map.len() < valves.len() {
-                next = next
-                    .iter()
-                    .flat_map(|&other| {
-                        if inner_map.contains_key(other) {
-                            vec![]
-                        } else {
-                            inner_map.insert(other, distance);
-
-                            valves
-                                .iter()
-                                .find(|&v| v.name == other)
-                                .unwrap()
-                                .neighbors
-                                .clone()
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                distance += 1;
-            }
-
-            map.insert(valve.name, inner_map);
-        }
-
-        Self(map)
-    }
-
-    fn distance(&self, from: &str, to: &str) -> u8 {
-        self.0[from][to]
+            Self {
+                flow_rate,
+                neighbors,
+            },
+        ))
     }
 }
 
 struct State<'a> {
     room: &'a str,
-    time: u8,
+    action: Action<'a>,
+    minute: u8,
     cumulated: u16,
-    closed_valves: Vec<&'a str>,
+    flow_per_minute: u16,
+    // closed_valves: Vec<&'a str>,
     opened_valves: Vec<&'a str>,
 }
 
-impl<'a> State<'a> {
-    fn get_nexts(&self, flow: u8, distance_map: &DistanceMap<'a>) -> Vec<State<'a>> {
-        self.closed_valves
-            .iter()
-            .map(|new_room| {
-                let closed_valves = self
-                    .closed_valves
-                    .iter()
-                    .filter(|&room| room != new_room)
-                    .map(|room| *room)
-                    .collect::<Vec<_>>();
-                let distance = distance_map.distance(self.room, new_room);
-                let mut time = self.time.saturating_sub(distance);
-                if flow > 0 && time > 0 {
-                    time = time.saturating_sub(1);
-                }
-                let cumulated = self.cumulated + flow as u16 * (self.time - 1) as u16;
-
-                let mut opened_valves = self.opened_valves.clone();
-                opened_valves.push(self.room);
-
-                Self {
-                    room: new_room,
-                    time,
-                    cumulated,
-                    closed_valves,
-                    opened_valves,
-                }
-            })
-            .collect::<Vec<_>>()
-    }
+fn get_move_actions<'a>(
+    map: &HashMap<&'a str, Valve<'a>>,
+    valve: &'a str,
+    last_room: &'a str,
+) -> Vec<Action<'a>> {
+    map[valve]
+        .neighbors
+        .iter()
+        .filter(|&&room| room != last_room)
+        .map(|neighbor| Action::Move(&neighbor))
+        .collect()
 }
 
 impl Eq for State<'_> {}
 
 impl PartialEq for State<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.time == other.time
+        self.minute == other.minute
             && self.cumulated == other.cumulated
+            && self.flow_per_minute == other.flow_per_minute
             && self.room == other.room
-            && self.closed_valves == other.closed_valves
+            && self.opened_valves == other.opened_valves
     }
 }
 
 impl PartialOrd for State<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.minute.partial_cmp(&other.minute) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
         match self.cumulated.partial_cmp(&other.cumulated) {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
-        match self.time.partial_cmp(&other.time) {
+        match self.flow_per_minute.partial_cmp(&other.flow_per_minute) {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
@@ -140,7 +91,7 @@ impl PartialOrd for State<'_> {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
-        self.closed_valves.partial_cmp(&other.closed_valves)
+        self.opened_valves.partial_cmp(&other.opened_valves)
     }
 }
 
@@ -150,63 +101,116 @@ impl Ord for State<'_> {
     }
 }
 
-struct Flows<'a>(HashMap<&'a str, u8>);
-
-fn main() {
-    let input = include_str!("../data/input.txt");
-    let valves = input
-        .lines()
-        .filter_map(|line| Valve::parse(line))
-        .collect::<Vec<_>>();
-    let closed_valves = valves
+fn find_path<'a>(valves: &HashMap<&'a str, Valve<'a>>, max_time: u8) -> (u16, Vec<&'a str>) {
+    let mut states = get_move_actions(&valves, "AA", "")
         .iter()
-        .filter_map(|valve| match valve.flow_rate {
-            0 => None,
-            _ => Some(valve.name),
+        .map(|action| State {
+            room: "AA",
+            cumulated: 0,
+            minute: 0,
+            flow_per_minute: 0,
+            // closed_valves,
+            opened_valves: vec![],
+            action: *action,
         })
-        .collect::<Vec<_>>();
-
-    let distance_map = DistanceMap::new(&valves);
-    let flows = Flows(
-        valves
-            .iter()
-            .map(|valve| (valve.name, valve.flow_rate))
-            .collect(),
-    );
-
-    let initial_option = State {
-        cumulated: 0,
-        time: 26,
-        closed_valves,
-        room: "AA",
-        opened_valves: vec![],
-    };
-
-    let mut open_options = BinaryHeap::new();
-    open_options.push(initial_option);
+        .collect::<BinaryHeap<_>>();
 
     let mut max_released_pressure = 0;
-    let mut max_size = 0;
-    let mut state_counter = 0;
     let mut path = vec![];
 
-    while !open_options.is_empty() {
-        state_counter += 1;
-        let state = open_options.pop().unwrap();
+    while !states.is_empty() {
+        let state = states.pop().unwrap();
         if state.cumulated > max_released_pressure {
             max_released_pressure = state.cumulated;
             path = state.opened_valves.clone();
         }
 
-        if state.time > 0 {
-            let new_states = state.get_nexts(flows.0[state.room], &distance_map);
-            open_options.extend(new_states.into_iter());
+        let minutes_left = max_time - state.minute;
+        let max_pressure_approx = state.cumulated + minutes_left as u16 * state.flow_per_minute * 2;
+
+        // Some options are treated as "not good" and are skipped:
+        // - The first 15 (or 13) minutes, every possible solution is taken into consideration
+        // - Afterwards, states which have not released enough pressure yet are skipped. A state is not viable, if another
+        // solution has already collected more pressure than this solution would, even if it has doubled is flow per minute immediately.
+        if minutes_left > 0
+            && (max_pressure_approx > max_released_pressure || state.minute <= max_time / 2)
+        {
+            let cumulated = state.cumulated + state.flow_per_minute;
+            let minute = state.minute + 1;
+            let (room, flow_per_minute, opened_valves) = match state.action {
+                Action::Move(new_room) => (new_room, state.flow_per_minute, state.opened_valves),
+                Action::Open(flow) => {
+                    let mut opened_valves = state.opened_valves.clone();
+                    opened_valves.push(state.room);
+                    (
+                        state.room,
+                        state.flow_per_minute + flow as u16,
+                        opened_valves,
+                    )
+                }
+            };
+
+            let mut actions = get_move_actions(&valves, room, state.room);
+            if valves[room].flow_rate > 0 && !opened_valves.contains(&room) {
+                actions.push(Action::Open(valves[room].flow_rate));
+            }
+            let x = actions.iter().map(|action| State {
+                room,
+                cumulated,
+                minute,
+                flow_per_minute,
+                opened_valves: opened_valves.clone(),
+                action: *action,
+            });
+            states.extend(x);
         }
-        max_size = open_options.len().max(max_size);
     }
 
+    (max_released_pressure, path)
+}
+
+fn main() {
+    let input = include_str!("../data/demo_input.txt");
+    let valves: HashMap<&str, Valve> = input
+        .lines()
+        .filter_map(|line| Valve::parse(line))
+        .collect();
+
+    let (max_released_pressure, path) = find_path(&valves, 30);
+    println!("============ PART I ============");
     println!("The max. pressure released is {}", max_released_pressure);
     println!("The path is {:?}", path);
-    println!("The max. queue length is {}", max_size);
-    println!("It took {} steps", state_counter);
+
+    let (max_released_pressure_1, path_1) = find_path(&valves, 26);
+    println!("============ PART II ============");
+    println!("The max. pressure released is {}", max_released_pressure_1);
+    println!("The path is {:?}", path_1);
+
+    // This solution works for my real input, because the elephant can open valves on a complete different branch of the
+    // tunnels. It does not work, if the same valves should be opened by two different openers.
+    let valves_filtered: HashMap<&str, Valve> = valves
+        .iter()
+        .map(|(name, valve)| {
+            (
+                *name,
+                Valve {
+                    flow_rate: if path_1.contains(name) {
+                        0
+                    } else {
+                        valve.flow_rate
+                    },
+                    ..valve.clone()
+                },
+            )
+        })
+        .collect();
+    let (max_released_pressure_2, path_2) = find_path(&valves_filtered, 26);
+
+    println!("The max. pressure released is {}", max_released_pressure_2);
+    println!("The path is {:?}", path_2);
+
+    println!(
+        "The combined max. pressure released is {}",
+        max_released_pressure_1 + max_released_pressure_2
+    );
 }
