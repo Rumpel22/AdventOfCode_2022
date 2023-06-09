@@ -176,7 +176,7 @@ fn main() {
 
     let initial_option = State {
         cumulated: 0,
-        time: 30,
+        time: 26,
         closed_valves,
         room: "AA",
         opened_valves: vec![],
