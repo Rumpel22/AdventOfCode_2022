@@ -170,7 +170,7 @@ fn find_path<'a>(valves: &HashMap<&'a str, Valve<'a>>, max_time: u8) -> (u16, Ve
 }
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
     let valves: HashMap<&str, Valve> = input
         .lines()
         .filter_map(|line| Valve::parse(line))
