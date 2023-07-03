@@ -1,6 +1,6 @@
-use std::iter::successors;
+use std::{fmt::Display, iter::successors};
 
-use enum_iterator::{next_cycle, Sequence};
+use enum_iterator::{cardinality, next_cycle, Sequence};
 
 enum Direction {
     Left,
@@ -35,6 +35,19 @@ impl Shape {
             Shape::Vertical => vec![(0, 0), (0, 1), (0, 2), (0, 3)],
             Shape::Square => vec![(0, 0), (1, 0), (0, 1), (1, 1)],
         }
+    }
+}
+
+impl Display for Shape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let c = match self {
+            Shape::Horizontal => 'H',
+            Shape::Plus => '+',
+            Shape::L => 'L',
+            Shape::Vertical => 'v',
+            Shape::Square => 'x',
+        };
+        write!(f, "{}", c)
     }
 }
 
@@ -81,14 +94,14 @@ impl Rock {
 }
 
 #[derive(Debug)]
-struct Chamber(Vec<[bool; 7]>);
+struct Chamber(Vec<[Option<Shape>; 7]>);
 
 impl Chamber {
     fn is_occupied(&self, x: usize, y: usize) -> bool {
-        if y > self.0.len() {
+        if y > self.height() {
             return false;
         }
-        self.0[(y - 1) as usize][(x - 1) as usize]
+        self.0[(y - 1) as usize][(x - 1) as usize].is_some()
     }
 
     fn add(&mut self, rock: &Rock) {
@@ -97,17 +110,36 @@ impl Chamber {
             .iter()
             .map(|(x, y)| (*x as usize + rock.x, *y as usize + rock.y))
             .for_each(|(x, y)| {
-                if y as usize > self.0.len() {
-                    self.0.resize((y) as usize, [false; 7])
+                if y as usize > self.height() {
+                    self.0.resize((y) as usize, [None; 7])
                 }
-                self.0[(y - 1) as usize][(x - 1) as usize] = true;
+                self.0[(y - 1) as usize][(x - 1) as usize] = Some(rock.shape);
             });
+    }
+    fn height(&self) -> usize {
+        self.0.len()
     }
 }
 
-fn main() {
-    let input = include_str!("data/input.txt");
-    let mut stream = input
+impl Display for Chamber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for row in &self.0 {
+            write!(f, "|")?;
+            for field in row {
+                match field {
+                    Some(s) => write!(f, "{}", s)?,
+                    None => write!(f, " ")?,
+                };
+            }
+            writeln!(f, "|")?;
+        }
+        Ok(())
+    }
+}
+
+fn fallen_rocks(rock_count: usize) -> Chamber {
+    const INPUT: &str = include_str!("../data/input.txt");
+    let mut stream = INPUT
         .chars()
         .map(|c| match c {
             '<' => Direction::Left,
@@ -120,8 +152,8 @@ fn main() {
 
     let mut chamber = Chamber { 0: vec![] };
 
-    for shape in shapes.take(2022) {
-        let highest_block = chamber.0.len();
+    for shape in shapes.take(rock_count) {
+        let highest_block = chamber.height();
         let mut rock = Rock::new(shape, highest_block);
 
         loop {
@@ -134,12 +166,90 @@ fn main() {
                 rock = next_rock;
             } else {
                 chamber.add(&rock);
+
                 break;
             }
         }
     }
+    chamber
+}
 
-    // println!("{:?}", chamber);
+fn main() {
+    let chamber = fallen_rocks(2022);
+    println!("The tower of rocks is {} units tall.\n", chamber.height());
 
-    println!("The tower of rocks is {} units tall", chamber.0.len());
+    println!("PART II\n========");
+
+    // The first ~50 lines do not repeat, reason unknown.
+    // At line 75, there is a horizontal piece and nothing else (found experimentally)
+    let offset = 75;
+    let ten_lines = &chamber.0[offset..offset + 100];
+    let distance = chamber.0[offset + 1..]
+        .windows(ten_lines.len())
+        .position(|window| window == ten_lines)
+        .and_then(|x| Some(x + 1));
+    match distance {
+        Some(pos) => println!("Repetition after {} lines", pos),
+        None => {
+            println!("No repetition");
+            return;
+        }
+    }
+
+    let repeating_rows = distance.unwrap();
+
+    let lines = [
+        offset,
+        offset + repeating_rows - 1,
+        offset + repeating_rows,
+        offset + repeating_rows + 1,
+    ];
+    for line in lines {
+        println!("Line {}: {:?}", line, chamber.0[line]);
+    }
+
+    fn pieces_in_first_n_rows(n: usize, chamber: &Chamber) -> usize {
+        chamber
+            .0
+            .iter()
+            .enumerate()
+            .take_while(|(line, _)| line < &n)
+            .filter(|(_, row)| row.iter().any(|shape| shape == &Some(Shape::Horizontal)))
+            .count()
+            * cardinality::<Shape>()
+    }
+
+    // There are X pieces fallen down before the found repetition starts and the tower is already 'offset' tall
+    let first_n_pieces = pieces_in_first_n_rows(offset, &chamber);
+    println!(
+        "To fill the first {} rows, it takes {} pieces.",
+        offset, first_n_pieces
+    );
+
+    let pieces_until_repetition = pieces_in_first_n_rows(repeating_rows + offset, &chamber);
+    // println!("{}", pieces_until_repetition);
+
+    let pieces_within_repetition = pieces_until_repetition - first_n_pieces;
+    // println!("{}", pieces_within_repetition);
+
+    let total_pieces = 1000000000000;
+    let remaining_pieces = total_pieces - first_n_pieces;
+
+    let n_repetitions = remaining_pieces / pieces_within_repetition;
+    let height_repetitions = n_repetitions * repeating_rows;
+    println!(
+        "There are {} repetitions, each with {} pieces. This results in a tower that is {} pieces tall.",
+        n_repetitions, pieces_within_repetition, height_repetitions
+    );
+
+    let repeated_pieces = n_repetitions * pieces_within_repetition;
+    let final_pieces = remaining_pieces - repeated_pieces;
+    println!(
+        "At the end, there are {} pieces left, that are not part of a complete repetition.",
+        final_pieces
+    );
+
+    let remaining_chamber = fallen_rocks(first_n_pieces + final_pieces);
+    let total_height = remaining_chamber.height() + height_repetitions;
+    println!("The total height is {}.", total_height);
 }
