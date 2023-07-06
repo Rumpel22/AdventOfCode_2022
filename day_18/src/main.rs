@@ -1,5 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
+use itertools::Itertools;
+
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
 struct Cube {
     x: i32,
@@ -109,7 +111,7 @@ struct Vessel {
 
 impl Vessel {
     fn new_for_lava(cubes: &[Cube]) -> Self {
-        // Allow some water to flow around the lava
+        // +/-1, to allow some water to flow around the lava
         let x_min = cubes.iter().min_by(|a, b| a.x.cmp(&b.x)).unwrap().x - 1;
         let y_min = cubes.iter().min_by(|a, b| a.y.cmp(&b.y)).unwrap().y - 1;
         let z_min = cubes.iter().min_by(|a, b| a.z.cmp(&b.z)).unwrap().z - 1;
@@ -120,15 +122,17 @@ impl Vessel {
         // This one is guaranteed to be empty and will be filled with water
         let first = Cube::new(x_min, y_min, z_min);
 
-        let x_dim = x_min..=x_max;
-        let y_dim = y_min..=y_max;
-        let z_dim = z_min..=z_max;
-
         // Create empty map with all cubes set to unknown
-        let mut map = x_dim
-            .flat_map(|x| y_dim.clone().map(move |y| (x, y)))
-            .flat_map(|(x, y)| z_dim.clone().map(move |z| (x, y, z)))
-            .map(|(x, y, z)| (Cube::new(x, y, z), Content::Unknown))
+        let mut map = [x_min..=x_max, y_min..=y_max, z_min..=z_max]
+            .into_iter()
+            .multi_cartesian_product()
+            .map(|v| {
+                let mut v = v.iter();
+                let x = v.next().unwrap();
+                let y = v.next().unwrap();
+                let z = v.next().unwrap();
+                (Cube::new(*x, *y, *z), Content::Unknown)
+            })
             .collect::<HashMap<_, _>>();
 
         // Insert lava
