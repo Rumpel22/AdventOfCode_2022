@@ -1,7 +1,6 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     str::FromStr,
-    vec,
 };
 
 use regex::Regex;
@@ -74,12 +73,79 @@ impl FromStr for Blueprint {
     }
 }
 
-#[derive(Default)]
+impl Blueprint {
+    fn buy_robots(&self, old_state: &State, new_state: &State) -> HashSet<State> {
+        let mut states = HashSet::new();
+
+        if !self.can_buy_robot(Unit::Ore, &old_state) && self.can_buy_robot(Unit::Ore, &new_state) {
+            let state = State {
+                ore: new_state.ore - self.cost_per_ore_robot.amount,
+                ore_robots: new_state.ore_robots + 1,
+                ..*new_state
+            };
+            states.insert(state);
+            states.extend(self.buy_robots(&old_state, &state).iter());
+        }
+        if !self.can_buy_robot(Unit::Clay, &old_state) && self.can_buy_robot(Unit::Clay, &new_state)
+        {
+            let state = State {
+                ore: new_state.ore - self.cost_per_clay_robot.amount,
+                clay_robots: new_state.clay_robots + 1,
+                ..*new_state
+            };
+            states.insert(state);
+            states.extend(self.buy_robots(&old_state, &state).iter());
+        }
+        if !self.can_buy_robot(Unit::Obsidian, &old_state)
+            && self.can_buy_robot(Unit::Obsidian, &new_state)
+        {
+            let state = State {
+                ore: new_state.ore - self.cost_per_obisidan_robot[0].amount,
+                clay: new_state.clay - self.cost_per_obisidan_robot[1].amount,
+                obsidian_robots: new_state.obsidian_robots + 1,
+                ..*new_state
+            };
+            states.insert(state);
+            states.extend(self.buy_robots(&old_state, &state).iter());
+        }
+        if !self.can_buy_robot(Unit::Geode, &old_state)
+            && self.can_buy_robot(Unit::Geode, &new_state)
+        {
+            let state = State {
+                ore: new_state.ore - self.cost_per_geode_robot[0].amount,
+                obsidian: new_state.obsidian - self.cost_per_geode_robot[1].amount,
+                geode_robots: new_state.geode_robots + 1,
+                ..*new_state
+            };
+            states.insert(state);
+            states.extend(self.buy_robots(&old_state, &state).iter());
+        }
+
+        states
+    }
+
+    fn can_buy_robot(&self, unit: Unit, state: &State) -> bool {
+        match unit {
+            Unit::Ore => state.ore >= self.cost_per_ore_robot.amount,
+            Unit::Clay => state.ore >= self.cost_per_clay_robot.amount,
+            Unit::Obsidian => {
+                state.ore >= self.cost_per_obisidan_robot[0].amount
+                    && state.clay >= self.cost_per_obisidan_robot[1].amount
+            }
+            Unit::Geode => {
+                state.ore >= self.cost_per_geode_robot[0].amount
+                    && state.obsidian >= self.cost_per_geode_robot[1].amount
+            }
+        }
+    }
+}
+
+#[derive(Default, Clone, Copy, Ord, Eq, PartialEq, PartialOrd, Hash)]
 struct State {
     time: u32,
     ore: u32,
     clay: u32,
-    obisidian: u32,
+    obsidian: u32,
     geode: u32,
     ore_robots: u32,
     clay_robots: u32,
@@ -90,22 +156,28 @@ struct State {
 impl State {
     fn initial() -> Self {
         Self {
-            geode_robots: 1,
+            ore_robots: 1,
             ..Self::default()
         }
     }
 
-    fn get_successors(&self, blueprint: &Blueprint) -> Vec<Self> {
-        let time = self.time + 1;
-        if time >= 25 {
-            return vec![];
+    fn get_successors(&self, blueprint: &Blueprint) -> HashSet<Self> {
+        if self.time >= 24 {
+            return HashSet::new();
         }
 
-        let mut ore = self.ore + self.ore_robots;
-        let mut clay = self.clay + self.clay_robots;
-        let mut obsidian = self.obisidian + self.obsidian_robots;
-        let geode = self.geode + self.geode_robots;
-        vec![]
+        let next_state = Self {
+            time: self.time + 1,
+            ore: self.ore + self.ore_robots,
+            clay: self.clay + self.clay_robots,
+            obsidian: self.obsidian + self.obsidian_robots,
+            geode: self.geode + self.geode_robots,
+            ..*self
+        };
+
+        let mut successors = blueprint.buy_robots(&self, &next_state);
+        successors.insert(next_state);
+        successors
     }
 }
 
@@ -124,7 +196,7 @@ fn evaluate_blueprint(blueprint: &Blueprint) -> u32 {
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input.txt");
     let blueprints = input
         .lines()
         .map(|line| line.parse::<Blueprint>().unwrap())
