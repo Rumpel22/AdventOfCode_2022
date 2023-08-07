@@ -7,6 +7,8 @@ use std::collections::HashMap;
 
 fn main() {
     let input = include_str!("../data/input.txt");
+    let max_time = 24;
+
     let blueprints = input
         .lines()
         .map(|line| line.parse::<Blueprint>().unwrap())
@@ -14,7 +16,7 @@ fn main() {
 
     let geodes = blueprints
         .iter()
-        .map(|blueprint| (blueprint.id, v2::evaluate(&blueprint)))
+        .map(|blueprint| (blueprint.id, v2::evaluate(&blueprint, max_time)))
         .collect::<HashMap<_, _>>();
 
     let quality_level = geodes
@@ -22,5 +24,8 @@ fn main() {
         .map(|(id, max_geodes)| id * max_geodes)
         .sum::<u32>();
 
-    println!("The quality level after 24 minutes: {}", quality_level);
+    println!(
+        "The quality level after {} minutes: {}",
+        max_time, quality_level
+    );
 }

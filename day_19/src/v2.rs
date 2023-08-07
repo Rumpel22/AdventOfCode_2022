@@ -120,16 +120,12 @@ impl State {
         if !self.can_buy_robot(robot) {
             return None;
         }
-        let needed_time = self.time_till_robot(robot, blueprint) + 1;
-        let mut next_state = self.progress(needed_time);
-        if next_state.time > 24 {
-            let next_state = self.progress(24 - self.time);
-            return Some(next_state);
-        }
-
         if !self.should_buy(robot, blueprint) {
             return None;
         }
+
+        let needed_time = self.time_till_robot(robot, blueprint) + 1;
+        let mut next_state = self.progress(needed_time);
 
         match robot {
             Unit::Ore => {
@@ -168,18 +164,22 @@ impl State {
 }
 
 #[allow(dead_code)]
-pub(crate) fn evaluate(blueprint: &Blueprint) -> u32 {
+pub(crate) fn evaluate(blueprint: &Blueprint, max_time: u32) -> u32 {
     let mut max_geodes = 0_u32;
     let mut states = VecDeque::from([State::initial()]);
     while let Some(state) = states.pop_front() {
         max_geodes = max_geodes.max(state.geode);
 
-        if state.time >= 24 {
+        if state.time >= max_time {
             continue;
         }
 
         for robot in [Unit::Ore, Unit::Clay, Unit::Obsidian, Unit::Geode] {
-            if let Some(next_state) = state.buy_robot(robot, blueprint) {
+            if let Some(mut next_state) = state.buy_robot(robot, blueprint) {
+                if next_state.time > max_time {
+                    next_state = state.progress(max_time - state.time);
+                }
+
                 states.push_back(next_state);
             }
         }
