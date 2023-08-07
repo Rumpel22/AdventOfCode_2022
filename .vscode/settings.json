@@ -10,5 +10,9 @@
     "git.closeDiffOnOperation": true,
     "git.mergeEditor": false,
     "git.timeline.showAuthor": false,
-    "git.autorefresh": true
+    "git.autorefresh": true,
+    "rust-analyzer.linkedProjects": [
+        "./day_19/Cargo.toml",
+        "./day_19/Cargo.toml"
+    ]
 }
