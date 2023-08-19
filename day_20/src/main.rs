@@ -1,17 +1,7 @@
 struct Number {
-    value: i32,
-    initial_position: i32,
-    position: i32,
-}
-
-fn wrap(mut value: i32, max: i32) -> i32 {
-    while value <= 0 {
-        value = value + max - 1;
-    }
-    while value > max {
-        value = value - max + 1;
-    }
-    value
+    value: i64,
+    initial_position: i64,
+    position: i64,
 }
 
 fn main() {
@@ -21,8 +11,8 @@ fn main() {
         .lines()
         .enumerate()
         .map(|(position, line)| {
-            let value = line.parse::<i32>().unwrap();
-            let position = position as i32;
+            let value = line.parse::<i64>().unwrap();
+            let position = position as i64;
             Number {
                 value,
                 initial_position: position,
@@ -31,7 +21,7 @@ fn main() {
         })
         .collect::<Vec<_>>();
 
-    let num_numbers = numbers.len() as i32;
+    let num_numbers = numbers.len() as i64;
 
     for position in 0..num_numbers {
         let current_number = numbers
@@ -39,8 +29,8 @@ fn main() {
             .find(|n| n.initial_position == position)
             .unwrap();
 
-        let new_position = current_number.position + current_number.value;
-        let new_position = wrap(new_position, num_numbers);
+        let new_position = current_number.position as i64 + current_number.value;
+        let new_position = new_position.rem_euclid(num_numbers - 1);
         let old_position = current_number.position;
         let init_position = current_number.initial_position;
         current_number.position = new_position;
@@ -76,7 +66,7 @@ fn main() {
                 .unwrap()
                 .value
         })
-        .sum::<i32>();
+        .sum::<i64>();
 
     println!("Sum of grove coordinates: {}", sum);
 }
