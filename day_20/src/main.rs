@@ -11,7 +11,7 @@ fn main() {
         .lines()
         .enumerate()
         .map(|(position, line)| {
-            let value = line.parse::<i64>().unwrap();
+            let value = line.parse::<i64>().unwrap() * 811589153;
             let position = position as i64;
             Number {
                 value,
@@ -23,34 +23,36 @@ fn main() {
 
     let num_numbers = numbers.len() as i64;
 
-    for position in 0..num_numbers {
-        let current_number = numbers
-            .iter_mut()
-            .find(|n| n.initial_position == position)
-            .unwrap();
+    for _ in 0..10 {
+        for position in 0..num_numbers {
+            let current_number = numbers
+                .iter_mut()
+                .find(|n| n.initial_position == position)
+                .unwrap();
 
-        let new_position = current_number.position as i64 + current_number.value;
-        let new_position = new_position.rem_euclid(num_numbers - 1);
-        let old_position = current_number.position;
-        let init_position = current_number.initial_position;
-        current_number.position = new_position;
+            let new_position = current_number.position as i64 + current_number.value;
+            let new_position = new_position.rem_euclid(num_numbers - 1);
+            let old_position = current_number.position;
+            let init_position = current_number.initial_position;
+            current_number.position = new_position;
 
-        let (lower, upper, offset) = if new_position > old_position {
-            (old_position, new_position, -1)
-        } else {
-            (new_position, old_position, 1)
-        };
+            let (lower, upper, offset) = if new_position > old_position {
+                (old_position, new_position, -1)
+            } else {
+                (new_position, old_position, 1)
+            };
 
-        numbers
-            .iter_mut()
-            .filter(|number| {
-                number.position >= lower
-                    && number.position <= upper
-                    && init_position != number.initial_position
-            })
-            .for_each(|number| {
-                number.position = number.position + offset;
-            });
+            numbers
+                .iter_mut()
+                .filter(|number| {
+                    number.position >= lower
+                        && number.position <= upper
+                        && init_position != number.initial_position
+                })
+                .for_each(|number| {
+                    number.position = number.position + offset;
+                });
+        }
     }
 
     let zero_position = numbers.iter().find(|number| number.value == 0).unwrap();
