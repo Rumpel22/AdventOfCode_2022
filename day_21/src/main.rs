@@ -10,6 +10,7 @@ enum Operation {
 enum Monkey<'a> {
     Number(i64),
     Operation(&'a str, &'a str, Operation),
+    Human,
 }
 
 fn parse_line(line: &str) -> (&str, Monkey) {
@@ -32,20 +33,57 @@ fn parse_line(line: &str) -> (&str, Monkey) {
     (name, monkey)
 }
 
-fn evaluate(name: &str, map: &HashMap<&str, Monkey>) -> i64 {
+fn evaluate(name: &str, map: &HashMap<&str, Monkey>) -> Option<i64> {
     let monkey = &map[name];
     match monkey {
-        Monkey::Number(number) => *number,
+        Monkey::Number(number) => Some(*number),
         Monkey::Operation(name1, name2, operation) => {
             let number1 = evaluate(&name1, &map);
-            let number2 = evaluate(&name2, &map);
             match operation {
-                Operation::Addition => number1 + number2,
-                Operation::Substraction => number1 - number2,
-                Operation::Multiplication => number1 * number2,
-                Operation::Division => number1 / number2,
+                Operation::Addition => number1
+                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 + num2))),
+                Operation::Substraction => number1
+                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 - num2))),
+                Operation::Multiplication => number1
+                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 * num2))),
+                Operation::Division => number1
+                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 / num2))),
             }
         }
+        Monkey::Human => None,
+    }
+}
+
+fn search_unknown(name: &str, map: &HashMap<&str, Monkey>, expected_result: i64) -> i64 {
+    let monkey = &map[name];
+    match monkey {
+        Monkey::Number(_) => unreachable!(),
+        Monkey::Operation(name1, name2, operation) => {
+            let result1 = evaluate(name1, &map);
+            let known_result = result1.or(evaluate(name2, &map)).unwrap();
+
+            let unknown_name = if result1.is_none() { name1 } else { name2 };
+            let expected_result = match operation {
+                Operation::Addition => expected_result - known_result,
+                Operation::Substraction => {
+                    if result1.is_some() {
+                        known_result - expected_result
+                    } else {
+                        expected_result + known_result
+                    }
+                }
+                Operation::Multiplication => expected_result / known_result,
+                Operation::Division => {
+                    if result1.is_some() {
+                        known_result / expected_result
+                    } else {
+                        known_result * expected_result
+                    }
+                }
+            };
+            search_unknown(&unknown_name, &map, expected_result)
+        }
+        Monkey::Human => expected_result,
     }
 }
 
@@ -54,5 +92,25 @@ fn main() {
     let monkeys = input.lines().map(parse_line).collect::<HashMap<_, _>>();
 
     let result = evaluate("root", &monkeys);
-    println!("root yells {result}");
+    println!("root yells {}", result.unwrap());
+
+    // ======================
+
+    let mut monkeys = monkeys;
+    monkeys.insert("humn", Monkey::Human);
+
+    let (name1, name2) = match monkeys["root"] {
+        Monkey::Operation(name1, name2, _) => (name1, name2),
+        _ => unreachable!(),
+    };
+    let result1 = evaluate(name1, &monkeys);
+
+    let human_number = if result1.is_some() {
+        search_unknown(name2, &monkeys, result1.unwrap())
+    } else {
+        let result2 = evaluate(name2, &monkeys);
+        search_unknown(name1, &monkeys, result2.unwrap())
+    };
+
+    println!("I should call {human_number}");
 }
