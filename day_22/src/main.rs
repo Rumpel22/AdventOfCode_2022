@@ -55,7 +55,7 @@ struct PositionIterator<'a> {
 }
 
 impl Iterator for PositionIterator<'_> {
-    type Item = Position;
+    type Item = (Position, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -98,17 +98,17 @@ impl Iterator for PositionIterator<'_> {
             }
         }
 
-        Some(self.position)
+        Some((self.position, self.direction))
     }
 }
 
 impl Map {
-    fn walk(&self, steps: u8, position: Position, direction: Direction) -> Position {
+    fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction) {
         self.iter(position, direction)
             .take(steps.into())
-            .take_while(|position| self.get(position).unwrap() == Tile::Open)
+            .take_while(|(position, _)| self.get(position).unwrap() == Tile::Open)
             .last()
-            .unwrap_or(position)
+            .unwrap_or((position, direction))
     }
 
     fn start_position(&self) -> Position {
@@ -194,7 +194,7 @@ fn main() {
     let (position, direction) = commands.iter().fold(
         (position, Direction::Right),
         |(position, direction), command| match command {
-            Command::Move(steps) => (map.walk(*steps, position, direction), direction),
+            Command::Move(steps) => map.walk(*steps, position, direction),
             Command::Turn(orientation) => (position, direction.turn(*orientation)),
         },
     );
