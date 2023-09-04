@@ -168,17 +168,14 @@ impl Map {
     fn col_min(&self, col: usize) -> Option<usize> {
         self.0
             .iter()
-            .enumerate()
-            .find(|(_, row)| row.get(col - 1).unwrap().is_some())
-            .map(|(index, _)| index + 1)
+            .position(|row| row.get(col - 1).unwrap_or(&None).is_some())
+            .map(|index| index + 1)
     }
     fn col_max(&self, col: usize) -> Option<usize> {
         self.0
             .iter()
-            .enumerate()
-            .filter(|(_, row)| row.get(col - 1).unwrap_or(&None).is_some())
-            .map(|(index, _)| index + 1)
-            .last()
+            .rposition(|row| row.get(col - 1).unwrap_or(&None).is_some())
+            .map(|index| index + 1)
     }
 }
 
