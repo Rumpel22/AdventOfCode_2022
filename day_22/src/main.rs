@@ -17,7 +17,7 @@ enum Tile {
     Wall,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum Direction {
     Left,
     Right,
@@ -58,44 +58,27 @@ impl Iterator for PositionIterator<'_> {
     type Item = (Position, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            self.position = match self.direction {
-                Direction::Left => Position {
-                    x: if self.position.x > 1 {
-                        self.position.x - 1
-                    } else {
-                        self.map.width(self.position.y)
-                    },
-                    y: self.position.y,
-                },
-                Direction::Right => Position {
-                    x: if self.position.x < self.map.width(self.position.y) {
-                        self.position.x + 1
-                    } else {
-                        1
-                    },
-                    y: self.position.y,
-                },
-                Direction::Up => Position {
-                    x: self.position.x,
-                    y: if self.position.y > 1 {
-                        self.position.y - 1
-                    } else {
-                        self.map.height()
-                    },
-                },
-                Direction::Down => Position {
-                    x: self.position.x,
-                    y: if self.position.y < self.map.height() {
-                        self.position.y + 1
-                    } else {
-                        1
-                    },
-                },
-            };
-            if self.map.get(&self.position).is_some() {
-                break;
-            }
+        self.position = match self.direction {
+            Direction::Left => Position {
+                x: self.position.x - 1,
+                y: self.position.y,
+            },
+            Direction::Right => Position {
+                x: self.position.x + 1,
+                y: self.position.y,
+            },
+            Direction::Up => Position {
+                x: self.position.x,
+                y: self.position.y - 1,
+            },
+            Direction::Down => Position {
+                x: self.position.x,
+                y: self.position.y + 1,
+            },
+        };
+        if self.map.get(&self.position).is_none() {
+            (self.position, self.direction) = self.map.wrap(&self.position, &self.direction);
+            assert!(self.map.get(&self.position).is_some())
         }
 
         Some((self.position, self.direction))
@@ -104,8 +87,9 @@ impl Iterator for PositionIterator<'_> {
 
 impl Map {
     fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction) {
-        self.iter(position, direction)
-            .take(steps.into())
+        let iter = self.iter(position, direction);
+
+        iter.take(steps.into())
             .take_while(|(position, _)| self.get(position).unwrap() == Tile::Open)
             .last()
             .unwrap_or((position, direction))
@@ -125,19 +109,76 @@ impl Map {
     }
 
     fn get(&self, position: &Position) -> Option<Tile> {
+        if position.x < 1 || position.y < 1 {
+            return None;
+        }
+
         *self
             .0
-            .get((position.y - 1) as usize)
-            .and_then(|row| row.get((position.x - 1) as usize))
+            .get(position.y - 1)
+            .and_then(|row| row.get(position.x - 1))
             .unwrap_or(&None)
     }
 
-    fn height(&self) -> usize {
-        self.0.len()
+    fn wrap(&self, position: &Position, direction: &Direction) -> (Position, Direction) {
+        let position = if direction == &Direction::Left
+            && Some(position.x).lt(&self.row_min(position.y))
+        {
+            Position {
+                x: self.row_max(position.y).unwrap(),
+                y: position.y,
+            }
+        } else if direction == &Direction::Right && Some(position.x).gt(&self.row_max(position.y)) {
+            Position {
+                x: self.row_min(position.y).unwrap(),
+                y: position.y,
+            }
+        } else if direction == &Direction::Up && Some(position.y).lt(&self.col_min(position.x)) {
+            Position {
+                x: position.x,
+                y: self.col_max(position.x).unwrap(),
+            }
+        } else if direction == &Direction::Down && Some(position.y).gt(&self.col_max(position.x)) {
+            Position {
+                x: position.x,
+                y: self.col_min(position.x).unwrap(),
+            }
+        } else {
+            unreachable!();
+        };
+        (position, *direction)
     }
 
-    fn width(&self, row: usize) -> usize {
-        self.0[row - 1].len()
+    fn row_min(&self, row_number: usize) -> Option<usize> {
+        self.0.get(row_number - 1).and_then(|row| {
+            row.iter()
+                .enumerate()
+                .find(|(_, tile)| tile.is_some())
+                .map(|(index, _)| index + 1)
+        })
+    }
+    fn row_max(&self, row_number: usize) -> Option<usize> {
+        self.0.get(row_number - 1).and_then(|row| {
+            row.iter()
+                .enumerate()
+                .rfind(|(_, tile)| tile.is_some())
+                .map(|(index, _)| index + 1)
+        })
+    }
+    fn col_min(&self, col: usize) -> Option<usize> {
+        self.0
+            .iter()
+            .enumerate()
+            .find(|(_, row)| row.get(col - 1).unwrap().is_some())
+            .map(|(index, _)| index + 1)
+    }
+    fn col_max(&self, col: usize) -> Option<usize> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.get(col - 1).unwrap_or(&None).is_some())
+            .map(|(index, _)| index + 1)
+            .last()
     }
 }
 
