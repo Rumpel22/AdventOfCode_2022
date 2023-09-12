@@ -210,16 +210,12 @@ fn parse(input: &str) -> (Map, Vec<Command>) {
     let map = input
         .lines()
         .take_while(|line| !line.is_empty())
-        .map(|line| parse_line(line))
+        .map(parse_line)
         .collect::<Vec<_>>();
 
-    let command_line = input
-        .lines()
-        .skip_while(|line| !line.is_empty())
-        .skip(1)
-        .next()
-        .unwrap();
+    let command_line = input.lines().last().unwrap();
     let commands = parse_commands(command_line);
+
     (Map(map), commands)
 }
 
