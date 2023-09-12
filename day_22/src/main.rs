@@ -25,6 +25,26 @@ enum Direction {
     Down,
 }
 
+enum EdgeLocation {
+    Top,
+    Left,
+    Bottom,
+    Right,
+}
+
+struct Edge {
+    location1: EdgeLocation,
+    start1: Position,
+    end1: Position,
+    location2: EdgeLocation,
+    start2: Position,
+    end2: Position,
+}
+
+struct Cube {
+    edges: Vec<Edge>,
+}
+
 impl Direction {
     fn turn(self, turn: Turn) -> Self {
         match self {
@@ -206,7 +226,73 @@ fn parse_line(line: &str) -> Vec<Option<Tile>> {
         .collect()
 }
 
-fn parse(input: &str) -> (Map, Vec<Command>) {
+fn parse_cube(input: &str) -> Cube {
+    let cube_fields = (input
+        .chars()
+        .filter(|c| return c == &'.' || c == &'#')
+        .count()
+        / 6) as f64;
+    let cube_size = cube_fields.sqrt() as usize;
+
+    let top_left_corners = input
+        .lines()
+        .enumerate()
+        .step_by(cube_size)
+        .flat_map(|(y, row)| {
+            row.chars()
+                .enumerate()
+                .step_by(cube_size)
+                .filter(|(_, c)| c == &'.' || c == &'#')
+                .map(move |(x, _)| Position { x: x + 1, y: y + 1 })
+        })
+        .collect::<Vec<_>>();
+
+    let edges = top_left_corners
+        .iter()
+        .enumerate()
+        .flat_map(|(side, position)| {
+            let left = position.x;
+            let right = left + cube_size - 1;
+            let top = position.y;
+            let bottom = top + cube_size - 1;
+            [
+                (
+                    side,
+                    EdgeLocation::Top,
+                    Position { x: left, y: top },
+                    Position { x: right, y: top },
+                ),
+                (
+                    side,
+                    EdgeLocation::Left,
+                    Position { x: left, y: top },
+                    Position { x: left, y: bottom },
+                ),
+                (
+                    side,
+                    EdgeLocation::Bottom,
+                    Position { x: left, y: bottom },
+                    Position {
+                        x: right,
+                        y: bottom,
+                    },
+                ),
+                (
+                    side,
+                    EdgeLocation::Right,
+                    Position { x: right, y: top },
+                    Position {
+                        x: right,
+                        y: bottom,
+                    },
+                ),
+            ]
+        })
+        .collect::<Vec<_>>();
+    Cube { edges: vec![] }
+}
+
+fn parse(input: &str) -> (Map, Vec<Command>, Cube) {
     let map = input
         .lines()
         .take_while(|line| !line.is_empty())
@@ -216,13 +302,15 @@ fn parse(input: &str) -> (Map, Vec<Command>) {
     let command_line = input.lines().last().unwrap();
     let commands = parse_commands(command_line);
 
-    (Map(map), commands)
+    let cube = parse_cube(input);
+
+    (Map(map), commands, cube)
 }
 
 fn main() {
     let input = include_str!("../data/input.txt");
 
-    let (map, commands) = parse(input);
+    let (map, commands, _) = parse(input);
 
     let position = map.start_position();
     let (position, direction) = commands.iter().fold(
