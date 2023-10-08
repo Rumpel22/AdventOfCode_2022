@@ -203,14 +203,10 @@ fn parse_commands(line: &str) -> Vec<Command> {
     let regex = Regex::new("(L|R|[0-9]+)").unwrap();
     regex
         .find_iter(line)
-        .map(|chars| {
-            let chars = chars.as_str();
-            match chars.chars().next().unwrap() {
-                'L' => Command::Turn(Turn::Left),
-                'R' => Command::Turn(Turn::Right),
-                c if c.is_ascii_digit() => Command::Move(chars.parse().unwrap()),
-                _ => unreachable!(),
-            }
+        .map(|chars| match chars.as_str() {
+            "L" => Command::Turn(Turn::Left),
+            "R" => Command::Turn(Turn::Right),
+            s => Command::Move(s.parse().unwrap()),
         })
         .collect()
 }
