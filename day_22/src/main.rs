@@ -32,6 +32,10 @@ enum EdgeLocation {
     Right,
 }
 
+trait Traversable {
+    fn start_position(&self) -> Position;
+    fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction);
+}
 struct Edge {
     location1: EdgeLocation,
     start1: Position,
@@ -106,20 +110,6 @@ impl Iterator for PositionIterator<'_> {
 }
 
 impl Map {
-    fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction) {
-        let iter = self.iter(position, direction);
-
-        iter.take(steps.into())
-            .take_while(|(position, _)| self.get(position).unwrap() == Tile::Open)
-            .last()
-            .unwrap_or((position, direction))
-    }
-
-    fn start_position(&self) -> Position {
-        let x = self.0[0].iter().position(|tile| tile.is_some()).unwrap();
-        Position { x: x + 1, y: 1 }
-    }
-
     fn iter(&self, position: Position, direction: Direction) -> PositionIterator {
         PositionIterator {
             map: self,
@@ -199,6 +189,22 @@ impl Map {
     }
 }
 
+impl Traversable for Map {
+    fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction) {
+        let iter = self.iter(position, direction);
+
+        iter.take(steps.into())
+            .take_while(|(position, _)| self.get(position).unwrap() == Tile::Open)
+            .last()
+            .unwrap_or((position, direction))
+    }
+
+    fn start_position(&self) -> Position {
+        let x = self.0[0].iter().position(|tile| tile.is_some()).unwrap();
+        Position { x: x + 1, y: 1 }
+    }
+}
+
 fn parse_commands(line: &str) -> Vec<Command> {
     let regex = Regex::new("(L|R|[0-9]+)").unwrap();
     regex
@@ -211,15 +217,24 @@ fn parse_commands(line: &str) -> Vec<Command> {
         .collect()
 }
 
-fn parse_line(line: &str) -> Vec<Option<Tile>> {
-    line.chars()
-        .map(|c| match c {
-            '.' => Some(Tile::Open),
-            '#' => Some(Tile::Wall),
-            ' ' => None,
-            _ => unreachable!(),
-        })
-        .collect()
+fn parse_map(input: &str) -> Map {
+    fn parse_line(line: &str) -> Vec<Option<Tile>> {
+        line.chars()
+            .map(|c| match c {
+                '.' => Some(Tile::Open),
+                '#' => Some(Tile::Wall),
+                ' ' => None,
+                _ => unreachable!(),
+            })
+            .collect()
+    }
+
+    let map = input
+        .lines()
+        .take_while(|line| !line.is_empty())
+        .map(parse_line)
+        .collect::<Vec<_>>();
+    Map(map)
 }
 
 fn parse_cube(input: &str) -> Cube {
@@ -289,34 +304,32 @@ fn parse_cube(input: &str) -> Cube {
 }
 
 fn parse(input: &str) -> (Map, Vec<Command>, Cube) {
-    let map = input
-        .lines()
-        .take_while(|line| !line.is_empty())
-        .map(parse_line)
-        .collect::<Vec<_>>();
+    let map = parse_map(input);
 
     let command_line = input.lines().last().unwrap();
     let commands = parse_commands(command_line);
 
     let cube = parse_cube(input);
 
-    (Map(map), commands, cube)
+    (map, commands, cube)
 }
 
-fn main() {
-    let input = include_str!("../data/input.txt");
+fn execute_commands(
+    commands: &Vec<Command>,
+    traversable: &impl Traversable,
+) -> (Position, Direction) {
+    let position = traversable.start_position();
 
-    let (map, commands, _) = parse(input);
-
-    let position = map.start_position();
-    let (position, direction) = commands.iter().fold(
+    commands.iter().fold(
         (position, Direction::Right),
         |(position, direction), command| match command {
-            Command::Move(steps) => map.walk(*steps, position, direction),
+            Command::Move(steps) => traversable.walk(*steps, position, direction),
             Command::Turn(orientation) => (position, direction.turn(*orientation)),
         },
-    );
+    )
+}
 
+fn get_password(position: Position, direction: Direction) -> usize {
     let direction_value = match direction {
         Direction::Left => 2,
         Direction::Right => 0,
@@ -324,6 +337,16 @@ fn main() {
         Direction::Down => 1,
     };
     let password = 1000 * position.y + 4 * position.x + direction_value;
+    password
+}
+
+fn main() {
+    let input = include_str!("../data/input.txt");
+
+    let (map, commands, _) = parse(input);
+
+    let (position, direction) = execute_commands(&commands, &map);
+    let password = get_password(position, direction);
 
     println!("The password is {password}");
 }
