@@ -25,28 +25,8 @@ enum Direction {
     Down,
 }
 
-enum EdgeLocation {
-    Top,
-    Left,
-    Bottom,
-    Right,
-}
-
-trait Traversable {
-    fn start_position(&self) -> Position;
-    fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction);
-}
-struct Edge {
-    location1: EdgeLocation,
-    start1: Position,
-    end1: Position,
-    location2: EdgeLocation,
-    start2: Position,
-    end2: Position,
-}
-
-struct Cube {
-    edges: Vec<Edge>,
+trait Wrapper {
+    fn wrap(&self, position: &Position, direction: &Direction) -> (Position, Direction);
 }
 
 impl Direction {
@@ -118,47 +98,6 @@ impl Map {
         }
     }
 
-    fn get(&self, position: &Position) -> Option<Tile> {
-        if position.x < 1 || position.y < 1 {
-            return None;
-        }
-
-        *self
-            .0
-            .get(position.y - 1)
-            .and_then(|row| row.get(position.x - 1))
-            .unwrap_or(&None)
-    }
-
-    fn wrap(&self, position: &Position, direction: &Direction) -> (Position, Direction) {
-        let position = if direction == &Direction::Left
-            && Some(position.x).lt(&self.row_min(position.y))
-        {
-            Position {
-                x: self.row_max(position.y).unwrap(),
-                y: position.y,
-            }
-        } else if direction == &Direction::Right && Some(position.x).gt(&self.row_max(position.y)) {
-            Position {
-                x: self.row_min(position.y).unwrap(),
-                y: position.y,
-            }
-        } else if direction == &Direction::Up && Some(position.y).lt(&self.col_min(position.x)) {
-            Position {
-                x: position.x,
-                y: self.col_max(position.x).unwrap(),
-            }
-        } else if direction == &Direction::Down && Some(position.y).gt(&self.col_max(position.x)) {
-            Position {
-                x: position.x,
-                y: self.col_min(position.x).unwrap(),
-            }
-        } else {
-            unreachable!();
-        };
-        (position, *direction)
-    }
-
     fn row_min(&self, row_number: usize) -> Option<usize> {
         self.0.get(row_number - 1).and_then(|row| {
             row.iter()
@@ -187,21 +126,48 @@ impl Map {
             .rposition(|row| row.get(col - 1).unwrap_or(&None).is_some())
             .map(|index| index + 1)
     }
+
+    fn get(&self, position: &Position) -> Option<Tile> {
+        if position.x < 1 || position.y < 1 {
+            return None;
+        }
+
+        *self
+            .0
+            .get(position.y - 1)
+            .and_then(|row| row.get(position.x - 1))
+            .unwrap_or(&None)
+    }
 }
 
-impl Traversable for Map {
-    fn walk(&self, steps: u8, position: Position, direction: Direction) -> (Position, Direction) {
-        let iter = self.iter(position, direction);
-
-        iter.take(steps.into())
-            .take_while(|(position, _)| self.get(position).unwrap() == Tile::Open)
-            .last()
-            .unwrap_or((position, direction))
-    }
-
-    fn start_position(&self) -> Position {
-        let x = self.0[0].iter().position(|tile| tile.is_some()).unwrap();
-        Position { x: x + 1, y: 1 }
+impl Wrapper for Map {
+    fn wrap(&self, position: &Position, direction: &Direction) -> (Position, Direction) {
+        let position = if direction == &Direction::Left
+            && Some(position.x).lt(&self.row_min(position.y))
+        {
+            Position {
+                x: self.row_max(position.y).unwrap(),
+                y: position.y,
+            }
+        } else if direction == &Direction::Right && Some(position.x).gt(&self.row_max(position.y)) {
+            Position {
+                x: self.row_min(position.y).unwrap(),
+                y: position.y,
+            }
+        } else if direction == &Direction::Up && Some(position.y).lt(&self.col_min(position.x)) {
+            Position {
+                x: position.x,
+                y: self.col_max(position.x).unwrap(),
+            }
+        } else if direction == &Direction::Down && Some(position.y).gt(&self.col_max(position.x)) {
+            Position {
+                x: position.x,
+                y: self.col_min(position.x).unwrap(),
+            }
+        } else {
+            unreachable!();
+        };
+        (position, *direction)
     }
 }
 
@@ -237,98 +203,38 @@ fn parse_map(input: &str) -> Map {
     Map(map)
 }
 
-fn parse_cube(input: &str) -> Cube {
-    let cube_fields = (input
-        .chars()
-        .filter(|c| return c == &'.' || c == &'#')
-        .count()
-        / 6) as f64;
-    let cube_size = cube_fields.sqrt() as usize;
-
-    let top_left_corners = input
-        .lines()
-        .enumerate()
-        .step_by(cube_size)
-        .flat_map(|(y, row)| {
-            row.chars()
-                .enumerate()
-                .step_by(cube_size)
-                .filter(|(_, c)| c == &'.' || c == &'#')
-                .map(move |(x, _)| Position { x: x + 1, y: y + 1 })
-        })
-        .collect::<Vec<_>>();
-
-    let edges = top_left_corners
-        .iter()
-        .enumerate()
-        .flat_map(|(side, position)| {
-            let left = position.x;
-            let right = left + cube_size - 1;
-            let top = position.y;
-            let bottom = top + cube_size - 1;
-            [
-                (
-                    side,
-                    EdgeLocation::Top,
-                    Position { x: left, y: top },
-                    Position { x: right, y: top },
-                ),
-                (
-                    side,
-                    EdgeLocation::Left,
-                    Position { x: left, y: top },
-                    Position { x: left, y: bottom },
-                ),
-                (
-                    side,
-                    EdgeLocation::Bottom,
-                    Position { x: left, y: bottom },
-                    Position {
-                        x: right,
-                        y: bottom,
-                    },
-                ),
-                (
-                    side,
-                    EdgeLocation::Right,
-                    Position { x: right, y: top },
-                    Position {
-                        x: right,
-                        y: bottom,
-                    },
-                ),
-            ]
-        })
-        .collect::<Vec<_>>();
-    Cube { edges: vec![] }
-}
-
-fn parse(input: &str) -> (Map, Vec<Command>, Cube) {
+fn parse(input: &str) -> (Map, Vec<Command>) {
     let map = parse_map(input);
 
     let command_line = input.lines().last().unwrap();
     let commands = parse_commands(command_line);
 
-    let cube = parse_cube(input);
-
-    (map, commands, cube)
+    (map, commands)
 }
 
-fn execute_commands(
-    commands: &Vec<Command>,
-    traversable: &impl Traversable,
-) -> (Position, Direction) {
-    let position = traversable.start_position();
-
-    commands.iter().fold(
-        (position, Direction::Right),
-        |(position, direction), command| match command {
-            Command::Move(steps) => traversable.walk(*steps, position, direction),
-            Command::Turn(orientation) => (position, direction.turn(*orientation)),
-        },
-    )
+fn start_position(map: &Map) -> Position {
+    let x = map.0[0].iter().position(|tile| tile.is_some()).unwrap();
+    Position { x: x + 1, y: 1 }
 }
 
+struct Executor<W> {
+    walker: W,
+}
+
+impl<'a, W> Executor<W>
+where
+    W: Walker<'a>,
+{
+    fn execute_commands(&self, commands: &Vec<Command>, map: &'a Map) -> (Position, Direction) {
+        commands.iter().fold(
+            (start_position(map), Direction::Right),
+            |(position, direction), command| match command {
+                Command::Move(steps) => self.walker.walk(map, *steps, position, direction),
+                Command::Turn(orientation) => (position, direction.turn(*orientation)),
+            },
+        )
+    }
+}
 fn get_password(position: Position, direction: Direction) -> usize {
     let direction_value = match direction {
         Direction::Left => 2,
@@ -340,13 +246,64 @@ fn get_password(position: Position, direction: Direction) -> usize {
     password
 }
 
+struct FlatWalker {}
+
+trait Walker<'a> {
+    fn walk(
+        &self,
+        map: &'a Map,
+        steps: u8,
+        position: Position,
+        direction: Direction,
+    ) -> (Position, Direction) {
+        let iterator = Self::iter(map, position, direction);
+
+        iterator
+            .take(steps.into())
+            .take_while(|(position, _)| map.get(position).unwrap() == Tile::Open)
+            .last()
+            .unwrap_or((position, direction))
+    }
+
+    fn iter(
+        map: &'a Map,
+        position: Position,
+        direction: Direction,
+    ) -> Box<dyn 'a + Iterator<Item = (Position, Direction)>>;
+}
+
+impl<'a> Walker<'a> for FlatWalker {
+    fn iter(
+        map: &'a Map,
+        position: Position,
+        direction: Direction,
+    ) -> Box<dyn 'a + Iterator<Item = (Position, Direction)>> {
+        Box::new(PositionIterator::<'a> {
+            map,
+            direction,
+            position,
+        })
+    }
+}
+
 fn main() {
     let input = include_str!("../data/input.txt");
 
-    let (map, commands, _) = parse(input);
+    let (map, commands) = parse(input);
 
-    let (position, direction) = execute_commands(&commands, &map);
+    let walker = Executor {
+        walker: FlatWalker {},
+    };
+
+    let (position, direction) = walker.execute_commands(&commands, &map);
     let password = get_password(position, direction);
 
-    println!("The password is {password}");
+    println!("The password for the flat map is {password}");
+
+    // let cube = Cube::new(&map);
+
+    // let (position, direction) = execute_commands(&commands, &cube);
+    // let password = get_password(position, direction);
+
+    // println!("The password for the cube map is {password}");
 }
