@@ -90,14 +90,6 @@ impl Iterator for PositionIterator<'_> {
 }
 
 impl Map {
-    fn iter(&self, position: Position, direction: Direction) -> PositionIterator {
-        PositionIterator {
-            map: self,
-            direction,
-            position,
-        }
-    }
-
     fn row_min(&self, row_number: usize) -> Option<usize> {
         self.0.get(row_number - 1).and_then(|row| {
             row.iter()
@@ -217,24 +209,20 @@ fn start_position(map: &Map) -> Position {
     Position { x: x + 1, y: 1 }
 }
 
-struct Executor<W> {
-    walker: W,
+fn execute_commands<'a, W>(commands: &Vec<Command>, map: &'a Map) -> (Position, Direction)
+where
+    W: Walker<'a> + Default,
+{
+    let walker: W = Default::default();
+    commands.iter().fold(
+        (start_position(map), Direction::Right),
+        |(position, direction), command| match command {
+            Command::Move(steps) => walker.walk(map, *steps, position, direction),
+            Command::Turn(orientation) => (position, direction.turn(*orientation)),
+        },
+    )
 }
 
-impl<'a, W> Executor<W>
-where
-    W: Walker<'a>,
-{
-    fn execute_commands(&self, commands: &Vec<Command>, map: &'a Map) -> (Position, Direction) {
-        commands.iter().fold(
-            (start_position(map), Direction::Right),
-            |(position, direction), command| match command {
-                Command::Move(steps) => self.walker.walk(map, *steps, position, direction),
-                Command::Turn(orientation) => (position, direction.turn(*orientation)),
-            },
-        )
-    }
-}
 fn get_password(position: Position, direction: Direction) -> usize {
     let direction_value = match direction {
         Direction::Left => 2,
@@ -246,6 +234,7 @@ fn get_password(position: Position, direction: Direction) -> usize {
     password
 }
 
+#[derive(Default)]
 struct FlatWalker {}
 
 trait Walker<'a> {
@@ -291,11 +280,7 @@ fn main() {
 
     let (map, commands) = parse(input);
 
-    let walker = Executor {
-        walker: FlatWalker {},
-    };
-
-    let (position, direction) = walker.execute_commands(&commands, &map);
+    let (position, direction) = execute_commands::<FlatWalker>(&commands, &map);
     let password = get_password(position, direction);
 
     println!("The password for the flat map is {password}");
