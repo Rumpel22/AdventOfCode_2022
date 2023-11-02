@@ -237,7 +237,7 @@ fn main() {
 
     let geodes = blueprints
         .iter()
-        .map(|blueprint| (blueprint.id, evaluate(&blueprint, max_time)))
+        .map(|blueprint| (blueprint.id, evaluate(blueprint, max_time)))
         .collect::<HashMap<_, _>>();
 
     let quality_level = geodes
@@ -250,10 +250,7 @@ fn main() {
         max_time, quality_level
     );
 
-    let product = geodes
-        .iter()
-        .map(|(_, max_geodes)| max_geodes)
-        .product::<u32>();
+    let product = geodes.values().product::<u32>();
 
     println!(
         "The product of the geodes amount after {} minutes: {}",

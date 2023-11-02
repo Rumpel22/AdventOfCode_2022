@@ -61,15 +61,13 @@ impl Ranges {
         for r in &self.0 {
             if range.start > r.end || range.end < r.start {
                 new_ranges.0.push(*r);
+            } else if merged {
+                new_ranges = new_ranges.merge(r);
             } else {
-                if merged {
-                    new_ranges = new_ranges.merge(r);
-                } else {
-                    merged = true;
-                    new_ranges
-                        .0
-                        .push(Range::new(range.start.min(r.start), range.end.max(r.end)).unwrap());
-                }
+                merged = true;
+                new_ranges
+                    .0
+                    .push(Range::new(range.start.min(r.start), range.end.max(r.end)).unwrap());
             };
         }
         if !merged {
@@ -140,8 +138,8 @@ fn main() {
         .filter_map(|sensor| {
             let remaining_x = sensor.distance as i64 - sensor.position.y.abs_diff(row) as i64;
             Range::new(
-                sensor.position.x - remaining_x as i64,
-                sensor.position.x + remaining_x as i64,
+                sensor.position.x - remaining_x,
+                sensor.position.x + remaining_x,
             )
         })
         .fold(Ranges::default(), |ranges, range| ranges.merge(&range));
@@ -156,8 +154,8 @@ fn main() {
             .filter_map(|sensor| {
                 let remaining_x = sensor.distance as i64 - sensor.position.y.abs_diff(row) as i64;
                 Range::new(
-                    sensor.position.x - remaining_x as i64,
-                    sensor.position.x + remaining_x as i64,
+                    sensor.position.x - remaining_x,
+                    sensor.position.x + remaining_x,
                 )
             })
             .fold(Ranges::default(), |ranges, range| {
@@ -166,8 +164,7 @@ fn main() {
 
         if ranges_on_row.len() != 4000001 {
             let x = (0..=4000000)
-                .filter(|number| !ranges_on_row.contains(*number))
-                .next()
+                .find(|number| !ranges_on_row.contains(*number))
                 .unwrap();
             println!("Found uncovered field at x={x}, y={row}.");
             println!(

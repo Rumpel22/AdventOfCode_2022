@@ -52,7 +52,7 @@ impl Debug for Map {
                     &self.fields.get(&Coordinate(x, y)).unwrap_or(&Unit::Air)
                 )?;
             }
-            writeln!(f, "")?
+            writeln!(f)?
         }
         Ok(())
     }
@@ -68,10 +68,7 @@ impl Index<Coordinate> for Map {
 
 impl IndexMut<Coordinate> for Map {
     fn index_mut(&mut self, index: Coordinate) -> &mut Self::Output {
-        if !self.fields.contains_key(&index) {
-            self.fields.insert(index, Unit::Air);
-        }
-        self.fields.get_mut(&index).unwrap()
+        self.fields.entry(index).or_insert(Unit::Air)
     }
 }
 
@@ -93,7 +90,7 @@ impl Map {
             fields: HashMap::from_iter(
                 wall_units
                     .iter()
-                    .map(|coordinate| (coordinate.clone(), Unit::Rock)),
+                    .map(|coordinate| (*coordinate, Unit::Rock)),
             ),
             x_limits,
             y_limits,

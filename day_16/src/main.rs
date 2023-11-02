@@ -20,13 +20,13 @@ impl<'a> Valve<'a> {
         let mut captures = rx.captures_iter(line);
         let captures = captures.next()?;
 
-        let name = captures.get(1).and_then(|c| Some(c.as_str()))?;
+        let name = captures.get(1).map(|c| c.as_str())?;
         let flow_rate = captures
             .get(2)
             .and_then(|c| c.as_str().parse::<u8>().ok())?;
         let neighbors = captures
             .get(3)
-            .and_then(|c| Some(c.as_str().split(", ").collect::<Vec<_>>()))?;
+            .map(|c| c.as_str().split(", ").collect::<Vec<_>>())?;
 
         Some((
             name,
@@ -57,7 +57,7 @@ fn get_move_actions<'a>(
         .neighbors
         .iter()
         .filter(|&&room| room != last_room)
-        .map(|neighbor| Action::Move(&neighbor))
+        .map(|neighbor| Action::Move(neighbor))
         .collect()
 }
 
@@ -87,7 +87,7 @@ impl PartialOrd for State<'_> {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
-        match self.room.partial_cmp(&other.room) {
+        match self.room.partial_cmp(other.room) {
             Some(core::cmp::Ordering::Equal) => {}
             ord => return ord,
         }
@@ -102,7 +102,7 @@ impl Ord for State<'_> {
 }
 
 fn find_path<'a>(valves: &HashMap<&'a str, Valve<'a>>, max_time: u8) -> (u16, Vec<&'a str>) {
-    let mut states = get_move_actions(&valves, "AA", "")
+    let mut states = get_move_actions(valves, "AA", "")
         .iter()
         .map(|action| State {
             room: "AA",
@@ -150,7 +150,7 @@ fn find_path<'a>(valves: &HashMap<&'a str, Valve<'a>>, max_time: u8) -> (u16, Ve
                 }
             };
 
-            let mut actions = get_move_actions(&valves, room, state.room);
+            let mut actions = get_move_actions(valves, room, state.room);
             if valves[room].flow_rate > 0 && !opened_valves.contains(&room) {
                 actions.push(Action::Open(valves[room].flow_rate));
             }
@@ -171,10 +171,7 @@ fn find_path<'a>(valves: &HashMap<&'a str, Valve<'a>>, max_time: u8) -> (u16, Ve
 
 fn main() {
     let input = include_str!("../data/input.txt");
-    let valves: HashMap<&str, Valve> = input
-        .lines()
-        .filter_map(|line| Valve::parse(line))
-        .collect();
+    let valves: HashMap<&str, Valve> = input.lines().filter_map(Valve::parse).collect();
 
     let (max_released_pressure, path) = find_path(&valves, 30);
     println!("============ PART I ============");

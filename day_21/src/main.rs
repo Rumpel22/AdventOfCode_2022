@@ -38,16 +38,20 @@ fn evaluate(name: &str, map: &HashMap<&str, Monkey>) -> Option<i64> {
     match monkey {
         Monkey::Number(number) => Some(*number),
         Monkey::Operation(name1, name2, operation) => {
-            let number1 = evaluate(&name1, &map);
+            let number1 = evaluate(name1, map);
             match operation {
-                Operation::Addition => number1
-                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 + num2))),
-                Operation::Substraction => number1
-                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 - num2))),
-                Operation::Multiplication => number1
-                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 * num2))),
-                Operation::Division => number1
-                    .and_then(|num1| evaluate(&name2, &map).and_then(|num2| Some(num1 / num2))),
+                Operation::Addition => {
+                    number1.and_then(|num1| evaluate(name2, map).map(|num2| num1 + num2))
+                }
+                Operation::Substraction => {
+                    number1.and_then(|num1| evaluate(name2, map).map(|num2| num1 - num2))
+                }
+                Operation::Multiplication => {
+                    number1.and_then(|num1| evaluate(name2, map).map(|num2| num1 * num2))
+                }
+                Operation::Division => {
+                    number1.and_then(|num1| evaluate(name2, map).map(|num2| num1 / num2))
+                }
             }
         }
         Monkey::Human => None,
@@ -59,8 +63,8 @@ fn search_unknown(name: &str, map: &HashMap<&str, Monkey>, expected_result: i64)
     match monkey {
         Monkey::Number(_) => unreachable!(),
         Monkey::Operation(name1, name2, operation) => {
-            let result1 = evaluate(name1, &map);
-            let known_result = result1.or(evaluate(name2, &map)).unwrap();
+            let result1 = evaluate(name1, map);
+            let known_result = result1.or(evaluate(name2, map)).unwrap();
 
             let unknown_name = if result1.is_none() { name1 } else { name2 };
             let expected_result = match operation {
@@ -81,7 +85,7 @@ fn search_unknown(name: &str, map: &HashMap<&str, Monkey>, expected_result: i64)
                     }
                 }
             };
-            search_unknown(&unknown_name, &map, expected_result)
+            search_unknown(unknown_name, map, expected_result)
         }
         Monkey::Human => expected_result,
     }
@@ -105,8 +109,8 @@ fn main() {
     };
     let result1 = evaluate(name1, &monkeys);
 
-    let human_number = if result1.is_some() {
-        search_unknown(name2, &monkeys, result1.unwrap())
+    let human_number = if let Some(result1) = result1 {
+        search_unknown(name2, &monkeys, result1)
     } else {
         let result2 = evaluate(name2, &monkeys);
         search_unknown(name1, &monkeys, result2.unwrap())

@@ -17,8 +17,8 @@ impl FromStr for Entry {
         loop {
             match chars.next() {
                 Some('[') => {
-                    if active.is_some() {
-                        stack.push_back(active.unwrap());
+                    if let Some(active) = active {
+                        stack.push_back(active);
                     }
                     active = Some(vec![]);
                 }

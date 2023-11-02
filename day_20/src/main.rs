@@ -30,7 +30,7 @@ fn main() {
                 .find(|n| n.initial_position == position)
                 .unwrap();
 
-            let new_position = current_number.position as i64 + current_number.value;
+            let new_position = current_number.position + current_number.value;
             let new_position = new_position.rem_euclid(num_numbers - 1);
             let old_position = current_number.position;
             let init_position = current_number.initial_position;
@@ -50,7 +50,7 @@ fn main() {
                         && init_position != number.initial_position
                 })
                 .for_each(|number| {
-                    number.position = number.position + offset;
+                    number.position += offset;
                 });
         }
     }
@@ -63,8 +63,7 @@ fn main() {
         .map(|position| {
             numbers
                 .iter()
-                .filter(|number| number.position == position)
-                .next()
+                .find(|number| number.position == position)
                 .unwrap()
                 .value
         })

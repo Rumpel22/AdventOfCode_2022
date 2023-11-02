@@ -101,7 +101,7 @@ impl Chamber {
         if y > self.height() {
             return false;
         }
-        self.0[(y - 1) as usize][(x - 1) as usize].is_some()
+        self.0[y - 1][x - 1].is_some()
     }
 
     fn add(&mut self, rock: &Rock) {
@@ -110,10 +110,10 @@ impl Chamber {
             .iter()
             .map(|(x, y)| (*x as usize + rock.x, *y as usize + rock.y))
             .for_each(|(x, y)| {
-                if y as usize > self.height() {
-                    self.0.resize((y) as usize, [None; 7])
+                if y > self.height() {
+                    self.0.resize(y, [None; 7])
                 }
-                self.0[(y - 1) as usize][(x - 1) as usize] = Some(rock.shape);
+                self.0[y - 1][x - 1] = Some(rock.shape);
             });
     }
     fn height(&self) -> usize {
@@ -150,7 +150,7 @@ fn fallen_rocks(rock_count: usize) -> Chamber {
 
     let shapes = successors(Some(Shape::Horizontal), |prev| next_cycle(prev));
 
-    let mut chamber = Chamber { 0: vec![] };
+    let mut chamber = Chamber(vec![]);
 
     for shape in shapes.take(rock_count) {
         let highest_block = chamber.height();
@@ -187,7 +187,7 @@ fn main() {
     let distance = chamber.0[offset + 1..]
         .windows(ten_lines.len())
         .position(|window| window == ten_lines)
-        .and_then(|x| Some(x + 1));
+        .map(|x| x + 1);
     match distance {
         Some(pos) => println!("Repetition after {} lines", pos),
         None => {
