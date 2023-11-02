@@ -91,7 +91,7 @@ where
         };
         if self.map.get(&self.position).is_none() {
             (self.position, self.direction) =
-                <W as Wrapper>::wrap(&self.map, &self.position, &self.direction);
+                <W as Wrapper>::wrap(self.map, &self.position, &self.direction);
             assert!(self.map.get(&self.position).is_some())
         }
 
@@ -221,7 +221,7 @@ fn start_position(map: &Map) -> Position {
     Position { x: x + 1, y: 1 }
 }
 
-fn execute_commands<'a, W>(commands: &Vec<Command>, map: &'a Map) -> (Position, Direction)
+fn execute_commands<'a, W>(commands: &[Command], map: &'a Map) -> (Position, Direction)
 where
     W: Wrapper<'a>,
 {
@@ -241,8 +241,7 @@ fn get_password(position: Position, direction: Direction) -> usize {
         Direction::Up => 3,
         Direction::Down => 1,
     };
-    let password = 1000 * position.y + 4 * position.x + direction_value;
-    password
+    1000 * position.y + 4 * position.x + direction_value
 }
 
 fn walk<'a, W>(
