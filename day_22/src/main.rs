@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use regex::Regex;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -25,8 +27,8 @@ enum Direction {
     Down,
 }
 
-trait Wrapper {
-    fn wrap(&self, position: &Position, direction: &Direction) -> (Position, Direction);
+trait Wrapper<'a> {
+    fn wrap(map: &'a Map, position: &Position, direction: &Direction) -> (Position, Direction);
 }
 
 impl Direction {
@@ -52,13 +54,20 @@ struct Position {
     y: usize,
 }
 
-struct PositionIterator<'a> {
+struct PositionIterator<'a, W>
+where
+    W: Wrapper<'a>,
+{
     direction: Direction,
     position: Position,
     map: &'a Map,
+    phantom: std::marker::PhantomData<W>,
 }
 
-impl Iterator for PositionIterator<'_> {
+impl<'a, W> Iterator for PositionIterator<'a, W>
+where
+    W: Wrapper<'a>,
+{
     type Item = (Position, Direction);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -81,7 +90,8 @@ impl Iterator for PositionIterator<'_> {
             },
         };
         if self.map.get(&self.position).is_none() {
-            (self.position, self.direction) = self.map.wrap(&self.position, &self.direction);
+            (self.position, self.direction) =
+                <W as Wrapper>::wrap(&self.map, &self.position, &self.direction);
             assert!(self.map.get(&self.position).is_some())
         }
 
@@ -132,29 +142,31 @@ impl Map {
     }
 }
 
-impl Wrapper for Map {
-    fn wrap(&self, position: &Position, direction: &Direction) -> (Position, Direction) {
+struct FlatWrapper {}
+
+impl Wrapper<'_> for FlatWrapper {
+    fn wrap(map: &'_ Map, position: &Position, direction: &Direction) -> (Position, Direction) {
         let position = if direction == &Direction::Left
-            && Some(position.x).lt(&self.row_min(position.y))
+            && Some(position.x).lt(&map.row_min(position.y))
         {
             Position {
-                x: self.row_max(position.y).unwrap(),
+                x: map.row_max(position.y).unwrap(),
                 y: position.y,
             }
-        } else if direction == &Direction::Right && Some(position.x).gt(&self.row_max(position.y)) {
+        } else if direction == &Direction::Right && Some(position.x).gt(&map.row_max(position.y)) {
             Position {
-                x: self.row_min(position.y).unwrap(),
+                x: map.row_min(position.y).unwrap(),
                 y: position.y,
             }
-        } else if direction == &Direction::Up && Some(position.y).lt(&self.col_min(position.x)) {
+        } else if direction == &Direction::Up && Some(position.y).lt(&map.col_min(position.x)) {
             Position {
                 x: position.x,
-                y: self.col_max(position.x).unwrap(),
+                y: map.col_max(position.x).unwrap(),
             }
-        } else if direction == &Direction::Down && Some(position.y).gt(&self.col_max(position.x)) {
+        } else if direction == &Direction::Down && Some(position.y).gt(&map.col_max(position.x)) {
             Position {
                 x: position.x,
-                y: self.col_min(position.x).unwrap(),
+                y: map.col_min(position.x).unwrap(),
             }
         } else {
             unreachable!();
@@ -211,13 +223,12 @@ fn start_position(map: &Map) -> Position {
 
 fn execute_commands<'a, W>(commands: &Vec<Command>, map: &'a Map) -> (Position, Direction)
 where
-    W: Walker<'a> + Default,
+    W: Wrapper<'a>,
 {
-    let walker: W = Default::default();
     commands.iter().fold(
         (start_position(map), Direction::Right),
         |(position, direction), command| match command {
-            Command::Move(steps) => walker.walk(map, *steps, position, direction),
+            Command::Move(steps) => walk::<W>(map, *steps, position, direction),
             Command::Turn(orientation) => (position, direction.turn(*orientation)),
         },
     )
@@ -234,45 +245,27 @@ fn get_password(position: Position, direction: Direction) -> usize {
     password
 }
 
-#[derive(Default)]
-struct FlatWalker {}
+fn walk<'a, W>(
+    map: &'a Map,
+    steps: u8,
+    position: Position,
+    direction: Direction,
+) -> (Position, Direction)
+where
+    W: Wrapper<'a>,
+{
+    let iterator = PositionIterator::<'_, W> {
+        map,
+        position,
+        direction,
+        phantom: PhantomData,
+    };
 
-trait Walker<'a> {
-    fn walk(
-        &self,
-        map: &'a Map,
-        steps: u8,
-        position: Position,
-        direction: Direction,
-    ) -> (Position, Direction) {
-        let iterator = Self::iter(map, position, direction);
-
-        iterator
-            .take(steps.into())
-            .take_while(|(position, _)| map.get(position).unwrap() == Tile::Open)
-            .last()
-            .unwrap_or((position, direction))
-    }
-
-    fn iter(
-        map: &'a Map,
-        position: Position,
-        direction: Direction,
-    ) -> Box<dyn 'a + Iterator<Item = (Position, Direction)>>;
-}
-
-impl<'a> Walker<'a> for FlatWalker {
-    fn iter(
-        map: &'a Map,
-        position: Position,
-        direction: Direction,
-    ) -> Box<dyn 'a + Iterator<Item = (Position, Direction)>> {
-        Box::new(PositionIterator::<'a> {
-            map,
-            direction,
-            position,
-        })
-    }
+    iterator
+        .take(steps.into())
+        .take_while(|(position, _)| map.get(position).unwrap() == Tile::Open)
+        .last()
+        .unwrap_or((position, direction))
 }
 
 fn main() {
@@ -280,7 +273,7 @@ fn main() {
 
     let (map, commands) = parse(input);
 
-    let (position, direction) = execute_commands::<FlatWalker>(&commands, &map);
+    let (position, direction) = execute_commands::<FlatWrapper>(&commands, &map);
     let password = get_password(position, direction);
 
     println!("The password for the flat map is {password}");
