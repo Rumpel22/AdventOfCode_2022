@@ -90,8 +90,7 @@ where
             },
         };
         if self.map.get(&self.position).is_none() {
-            (self.position, self.direction) =
-                <W as Wrapper>::wrap(self.map, &self.position, &self.direction);
+            (self.position, self.direction) = W::wrap(self.map, &self.position, &self.direction);
             assert!(self.map.get(&self.position).is_some())
         }
 
@@ -103,17 +102,15 @@ impl Map {
     fn row_min(&self, row_number: usize) -> Option<usize> {
         self.0.get(row_number - 1).and_then(|row| {
             row.iter()
-                .enumerate()
-                .find(|(_, tile)| tile.is_some())
-                .map(|(index, _)| index + 1)
+                .position(|tile| tile.is_some())
+                .map(|index| index + 1)
         })
     }
     fn row_max(&self, row_number: usize) -> Option<usize> {
         self.0.get(row_number - 1).and_then(|row| {
             row.iter()
-                .enumerate()
-                .rfind(|(_, tile)| tile.is_some())
-                .map(|(index, _)| index + 1)
+                .rposition(|tile| tile.is_some())
+                .map(|index| index + 1)
         })
     }
     fn col_min(&self, col: usize) -> Option<usize> {
@@ -177,7 +174,7 @@ impl Wrapper for FlatWrapper {
 
 struct CubeWrapper;
 impl Wrapper for CubeWrapper {
-    fn wrap(map: &Map, position: &Position, direction: &Direction) -> (Position, Direction) {
+    fn wrap(_: &Map, position: &Position, direction: &Direction) -> (Position, Direction) {
         let position = match direction {
             Direction::Left => Position {
                 x: position.x + 1,
@@ -247,7 +244,7 @@ fn start_position(map: &Map) -> Position {
     Position { x: x + 1, y: 1 }
 }
 
-fn execute_commands<'a, W>(commands: &[Command], map: &'a Map) -> (Position, Direction)
+fn execute_commands<W>(commands: &[Command], map: &Map) -> (Position, Direction)
 where
     W: Wrapper,
 {
@@ -270,12 +267,7 @@ fn get_password(position: Position, direction: Direction) -> usize {
     1000 * position.y + 4 * position.x + direction_value
 }
 
-fn walk<'a, W>(
-    map: &'a Map,
-    steps: u8,
-    position: Position,
-    direction: Direction,
-) -> (Position, Direction)
+fn walk<W>(map: &Map, steps: u8, position: Position, direction: Direction) -> (Position, Direction)
 where
     W: Wrapper,
 {

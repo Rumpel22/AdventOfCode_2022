@@ -148,7 +148,7 @@ fn fallen_rocks(rock_count: usize) -> Chamber {
         })
         .cycle();
 
-    let shapes = successors(Some(Shape::Horizontal), |prev| next_cycle(prev));
+    let shapes = successors(Some(Shape::Horizontal), next_cycle);
 
     let mut chamber = Chamber(vec![]);
 

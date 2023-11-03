@@ -75,29 +75,29 @@ impl PartialEq for State<'_> {
 
 impl PartialOrd for State<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.minute.partial_cmp(&other.minute) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        match self.cumulated.partial_cmp(&other.cumulated) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        match self.flow_per_minute.partial_cmp(&other.flow_per_minute) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        match self.room.partial_cmp(other.room) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        self.opened_valves.partial_cmp(&other.opened_valves)
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for State<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        match self.minute.cmp(&other.minute) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        match self.cumulated.cmp(&other.cumulated) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        match self.flow_per_minute.cmp(&other.flow_per_minute) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        match self.room.cmp(other.room) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        self.opened_valves.cmp(&other.opened_valves)
     }
 }
 
