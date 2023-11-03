@@ -27,8 +27,8 @@ enum Direction {
     Down,
 }
 
-trait Wrapper<'a> {
-    fn wrap(map: &'a Map, position: &Position, direction: &Direction) -> (Position, Direction);
+trait Wrapper {
+    fn wrap(map: &Map, position: &Position, direction: &Direction) -> (Position, Direction);
 }
 
 impl Direction {
@@ -56,7 +56,7 @@ struct Position {
 
 struct PositionIterator<'a, W>
 where
-    W: Wrapper<'a>,
+    W: Wrapper,
 {
     direction: Direction,
     position: Position,
@@ -66,7 +66,7 @@ where
 
 impl<'a, W> Iterator for PositionIterator<'a, W>
 where
-    W: Wrapper<'a>,
+    W: Wrapper,
 {
     type Item = (Position, Direction);
 
@@ -144,7 +144,7 @@ impl Map {
 
 struct FlatWrapper {}
 
-impl Wrapper<'_> for FlatWrapper {
+impl Wrapper for FlatWrapper {
     fn wrap(map: &'_ Map, position: &Position, direction: &Direction) -> (Position, Direction) {
         let position = if direction == &Direction::Left
             && Some(position.x).lt(&map.row_min(position.y))
@@ -223,7 +223,7 @@ fn start_position(map: &Map) -> Position {
 
 fn execute_commands<'a, W>(commands: &[Command], map: &'a Map) -> (Position, Direction)
 where
-    W: Wrapper<'a>,
+    W: Wrapper,
 {
     commands.iter().fold(
         (start_position(map), Direction::Right),
@@ -251,7 +251,7 @@ fn walk<'a, W>(
     direction: Direction,
 ) -> (Position, Direction)
 where
-    W: Wrapper<'a>,
+    W: Wrapper,
 {
     let iterator = PositionIterator::<'_, W> {
         map,
@@ -277,9 +277,7 @@ fn main() {
 
     println!("The password for the flat map is {password}");
 
-    // let cube = Cube::new(&map);
-
-    // let (position, direction) = execute_commands(&commands, &cube);
+    // let (position, direction) = execute_commands::<CubeWrapper>(&commands, &cube);
     // let password = get_password(position, direction);
 
     // println!("The password for the cube map is {password}");
