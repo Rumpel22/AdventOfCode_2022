@@ -175,6 +175,32 @@ impl Wrapper for FlatWrapper {
     }
 }
 
+struct CubeWrapper;
+impl Wrapper for CubeWrapper {
+    fn wrap(map: &Map, position: &Position, direction: &Direction) -> (Position, Direction) {
+        let position = match direction {
+            Direction::Left => Position {
+                x: position.x + 1,
+                y: position.y,
+            },
+            Direction::Right => Position {
+                x: position.x - 1,
+                y: position.y,
+            },
+            Direction::Up => Position {
+                x: position.x,
+                y: position.y + 1,
+            },
+            Direction::Down => Position {
+                x: position.x,
+                y: position.y - 1,
+            },
+        };
+        let direction = direction.turn(Turn::Left).turn(Turn::Left);
+        (position, direction)
+    }
+}
+
 fn parse_commands(line: &str) -> Vec<Command> {
     let regex = Regex::new("(L|R|[0-9]+)").unwrap();
     regex
@@ -277,8 +303,8 @@ fn main() {
 
     println!("The password for the flat map is {password}");
 
-    // let (position, direction) = execute_commands::<CubeWrapper>(&commands, &cube);
-    // let password = get_password(position, direction);
+    let (position, direction) = execute_commands::<CubeWrapper>(&commands, &map);
+    let password = get_password(position, direction);
 
-    // println!("The password for the cube map is {password}");
+    println!("The password for the cube map is {password}");
 }
