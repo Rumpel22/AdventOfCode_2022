@@ -193,56 +193,33 @@ impl Wrapper for CubeWrapper {
         let square_size = Self::square_size(map);
 
         let offset_x = position.x % square_size;
-        let left_x = position.x - offset_x;
-        let right_x = square_size + left_x + 1;
+        let left_x = Some(position.x - offset_x);
+        let right_x = Some(position.x - offset_x + square_size + 1);
 
         let offset_y = position.y % square_size;
-        let up_y = position.y - offset_y;
-        let down_y = square_size + up_y + 1;
+        let up_y = Some(position.y - offset_y);
+        let down_y = Some(position.y - offset_y + square_size + 1);
 
         for turn in [Turn::Left, Turn::Right] {
             let new_direction = direction.turn(turn);
-            let new_position = match (direction, new_direction) {
-                (Direction::Left, Direction::Up) => Position {
-                    x: position.x - offset_y,
-                    y: up_y,
-                },
-                (Direction::Left, Direction::Down) => Position {
-                    x: position.x - offset_y,
-                    y: down_y,
-                },
-                (Direction::Right, Direction::Up) => Position {
-                    x: position.x + offset_y,
-                    y: up_y,
-                },
-                (Direction::Right, Direction::Down) => Position {
-                    x: position.x + offset_y,
-                    y: down_y,
-                },
-                (Direction::Up, Direction::Left) => Position {
-                    x: left_x,
-                    y: position.y - offset_x,
-                },
-                (Direction::Up, Direction::Right) => Position {
-                    x: right_x,
-                    y: position.y - offset_x,
-                },
-                (Direction::Down, Direction::Left) => Position {
-                    x: left_x,
-                    y: position.y + offset_x,
-                },
-                (Direction::Down, Direction::Right) => Position {
-                    x: right_x,
-                    y: position.y + offset_x,
-                },
+            let (new_x, new_y) = match (direction, new_direction) {
+                (Direction::Left, Direction::Up) => (position.x.checked_sub(offset_y), up_y),
+                (Direction::Left, Direction::Down) => (position.x.checked_sub(offset_y), down_y),
+                (Direction::Right, Direction::Up) => (position.x.checked_add(offset_y), up_y),
+                (Direction::Right, Direction::Down) => (position.x.checked_add(offset_y), down_y),
+                (Direction::Up, Direction::Left) => (left_x, position.y.checked_sub(offset_x)),
+                (Direction::Up, Direction::Right) => (right_x, position.y.checked_sub(offset_x)),
+                (Direction::Down, Direction::Left) => (left_x, position.y.checked_add(offset_x)),
+                (Direction::Down, Direction::Right) => (right_x, position.y.checked_add(offset_x)),
                 _ => unreachable!(),
             };
 
-            // wrapping around
-            let new_position = Position {
-                x: new_position.x.rem_euclid(map.width()),
-                y: new_position.y.rem_euclid(map.height()),
-            };
+            let new_position = new_x.and_then(|x| new_y.map(|y| Position { x, y }));
+            if new_position.is_none() {
+                continue;
+            }
+            let new_position = new_position.unwrap();
+
             if map.get(&new_position).is_some() {
                 return (new_position, new_direction);
             }
