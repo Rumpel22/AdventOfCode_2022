@@ -126,6 +126,14 @@ impl Map {
             .map(|index| index + 1)
     }
 
+    fn width(&self) -> usize {
+        self.0.iter().map(|row| row.len()).max().unwrap_or(0)
+    }
+
+    fn height(&self) -> usize {
+        self.0.len()
+    }
+
     fn get(&self, position: &Position) -> Option<Tile> {
         if position.x < 1 || position.y < 1 {
             return None;
@@ -139,7 +147,7 @@ impl Map {
     }
 }
 
-struct FlatWrapper {}
+struct FlatWrapper;
 
 impl Wrapper for FlatWrapper {
     fn wrap(map: &'_ Map, position: &Position, direction: &Direction) -> (Position, Direction) {
@@ -173,28 +181,50 @@ impl Wrapper for FlatWrapper {
 }
 
 struct CubeWrapper;
+
+impl CubeWrapper {
+    fn square_size(map: &Map) -> usize {
+        ((map.0.iter().flatten().filter(|tile| tile.is_some()).count() / 6) as f64).sqrt() as usize
+    }
+}
+
 impl Wrapper for CubeWrapper {
-    fn wrap(_: &Map, position: &Position, direction: &Direction) -> (Position, Direction) {
-        let position = match direction {
-            Direction::Left => Position {
-                x: position.x + 1,
-                y: position.y,
-            },
-            Direction::Right => Position {
-                x: position.x - 1,
-                y: position.y,
-            },
-            Direction::Up => Position {
-                x: position.x,
-                y: position.y + 1,
-            },
-            Direction::Down => Position {
-                x: position.x,
-                y: position.y - 1,
-            },
-        };
-        let direction = direction.turn(Turn::Left).turn(Turn::Left);
-        (position, direction)
+    fn wrap(map: &Map, position: &Position, direction: &Direction) -> (Position, Direction) {
+        let square_size = Self::square_size(map);
+
+        let offset_x = position.x % square_size;
+        let left_x = Some(position.x - offset_x);
+        let right_x = Some(position.x - offset_x + square_size + 1);
+
+        let offset_y = position.y % square_size;
+        let up_y = Some(position.y - offset_y);
+        let down_y = Some(position.y - offset_y + square_size + 1);
+
+        for turn in [Turn::Left, Turn::Right] {
+            let new_direction = direction.turn(turn);
+            let (new_x, new_y) = match (direction, new_direction) {
+                (Direction::Left, Direction::Up) => (position.x.checked_sub(offset_y), up_y),
+                (Direction::Left, Direction::Down) => (position.x.checked_sub(offset_y), down_y),
+                (Direction::Right, Direction::Up) => (position.x.checked_add(offset_y), up_y),
+                (Direction::Right, Direction::Down) => (position.x.checked_add(offset_y), down_y),
+                (Direction::Up, Direction::Left) => (left_x, position.y.checked_sub(offset_x)),
+                (Direction::Up, Direction::Right) => (right_x, position.y.checked_sub(offset_x)),
+                (Direction::Down, Direction::Left) => (left_x, position.y.checked_add(offset_x)),
+                (Direction::Down, Direction::Right) => (right_x, position.y.checked_add(offset_x)),
+                _ => unreachable!(),
+            };
+
+            let new_position = new_x.and_then(|x| new_y.map(|y| Position { x, y }));
+            if new_position.is_none() {
+                continue;
+            }
+            let new_position = new_position.unwrap();
+
+            if map.get(&new_position).is_some() {
+                return (new_position, new_direction);
+            }
+        }
+        (*position, *direction)
     }
 }
 
@@ -286,7 +316,7 @@ where
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input.txt");
 
     let (map, commands) = parse(input);
 
